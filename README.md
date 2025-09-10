@@ -20,7 +20,6 @@ sudo apt install python3-picamera2
 ```commandline
 sudo apt install imx500-all
 ```
-
 ### Reboot Pi after install!
 
 ```commandline
@@ -41,7 +40,6 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-
 ## Check file paths in data_logger.sh and data_logger.service are correct for you!!
 ### Activate script
 ```commandline
@@ -50,7 +48,7 @@ chmod +x data_logger.sh
 
 ### Creating a service
 ```commandline
-sudo mv data_logger.service /etc/systemd/system/
+sudo cp data_logger.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable data_logger.service
 sudo systemctl start data_logger.service
