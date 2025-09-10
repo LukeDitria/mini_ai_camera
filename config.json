@@ -1,0 +1,13 @@
+{
+    "model": "yolov8n.rpk",
+    "labels": "coco_labels.txt",
+    "confidence": 0.5,
+    "ips": 10,
+    "lps": 2,
+    "device_name": "Mini_Cam_Box",
+    "save_video": false,
+    "save_images": true,
+    "save_data": true,
+    "draw_bbox": true,
+    "auto_select_media": true
+}

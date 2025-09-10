@@ -1,0 +1,20 @@
+[Unit]
+Description=Yolo Detector Service
+After=multi-user.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Documents/mini_ai_camera
+ExecStart=/bin/bash /home/pi/Documents/mini_ai_camera/data_logger.sh
+StandardOutput=append:/var/log/data_logger_out.log
+StandardError=append:/var/log/data_logger_error.log
+Restart=always
+RestartSec=10
+
+WatchdogSec=30
+NotifyAccess=all
+Type=notify
+
+[Install]
+WantedBy=multi-user.target
