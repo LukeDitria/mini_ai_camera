@@ -114,7 +114,8 @@ Note down the UUID and TYPE
 
 ### Create a mount point
 ```commandline
-sudo mkdir -p /media/myusb
+sudo mkdir -p /media/pi/myusb
+sudo chown -R pi:pi /media/pi/myusb/
 ```
 
 ### Edit /etc/fstab to include your device
@@ -125,7 +126,7 @@ sudo nano /etc/fstab
 Add this line at the end using YOUR UUID and TYPE!!
 
 ```commandline
-UUID=17F8-3814  /media/myusb  vfat  defaults  0  0
+UUID=17F8-3814  /media/pi/myusb  vfat  defaults,uid=1000,gid=1000,umask=000  0  0
 ```
 You may need to run 
 ```commandline
@@ -139,7 +140,7 @@ df -h
 ```
 You should see a line like
 ```commandline
-/dev/sda1       115G  140M  115G   1% /media/myusb
+/dev/sda1       115G  140M  115G   1% /media/pi/myusb
 ```
 
 ### Reboot!
