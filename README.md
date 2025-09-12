@@ -84,7 +84,59 @@ sudo systemctl start data_logger.service
 # Auto Mounting a USB Drive!
 ### If you are using the full desktop OS then ANY USB storage device will be automatically mounted in /media
 ### However, if you are using the OS Lite this will not happen and you will need to configure every USB device you want to use so it will auto mount when plugged in...
-### Follow this guide to know how!
-[Mount a USB Drive to the Raspberry Pi Manually](https://pimylifeup.com/raspberry-pi-mount-usb-drive/)
-### (go to the "Mount a USB Drive to the Raspberry Pi Manually" section)
+## 📂 Auto-Mounting a USB Drive by UUID
 
+If you want your Raspberry Pi (or Linux system) to automatically mount a USB drive at boot, you can use its **UUID** in `/etc/fstab`. This ensures the correct drive is mounted every time, even if the device path (`/dev/sda1`, `/dev/sdb1`, etc.) changes.
+
+### 1. Find the UUID of Your USB Drive
+First, plug in your USB drive and find its partition (e.g /dev/sda1):
+```commandline
+lsblk -o NAME,SIZE,MODEL,MOUNTPOINT
+```
+then find it's UUID (replace /dev/sda1 with your USB device partition)
+```commandline
+sudo blkid /dev/sda1
+```
+
+ You'll see something like:
+```bash
+/dev/sda1: UUID="17F8-3814" BLOCK_SIZE="512" TYPE="vfat"
+```
+Note down the UUID and TYPE
+
+### Create a mount point
+```commandline
+sudo mkdir -p /media/myusb
+```
+
+### Edit /etc/fstab to include your device
+```commandline
+sudo nano /etc/fstab
+```
+
+Add this line at the end using YOUR UUID and TYPE!!
+
+```commandline
+UUID=17F8-3814  /media/myusb  vfat  defaults  0  0
+```
+You may need to run 
+```commandline
+systemctl daemon-reload
+```
+
+### Testing that it works
+```commandline
+sudo mount -a
+df -h
+```
+You should see a line like
+```commandline
+/dev/sda1       115G  140M  115G   1% /media/myusb
+```
+
+### Reboot!
+Reboot your Pi and then run 
+```commandline
+df -h
+```
+To see if it has mounted automatically!
