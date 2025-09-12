@@ -1,20 +1,20 @@
 # Installing Requirements
+Steps for setting up your raspberry pi!
+You'll need to install a few things first...
 
 ### Update Pi if you haven't already
 ```commandline
 sudo apt update && sudo apt full-upgrade
 ```
 
-#### On systems where Picamera2 is supported but not pre-installed, you can install it with
-```commandline
-sudo apt install python3-picamera2 --no-install-recommends
-```
-#### to get a slightly reduced installation with fewer of the window system related elements (this would be suitable for installing on a Raspberry Pi OS Lite system), or
+#### On systems where Picamera2 is supported but not pre-installed (Such as the Lite OS), you can install it with
 ```commandline
 sudo apt install python3-picamera2
 ```
-#### for a full installation.
-
+#### OR to get a slightly reduced installation with fewer of the window system related elements (USE THIS for installing on a Raspberry Pi OS Lite system)
+```commandline
+sudo apt install python3-picamera2 --no-install-recommends
+```
 ### IMX500 (AI Camera)
 
 ```commandline
@@ -25,13 +25,15 @@ sudo apt install imx500-all
 ```commandline
 sudo reboot now
 ```
-
 ### picamera2 tells us to install system wide
 ### Therefore we need to install opencv etc, also at the system level...
 ### E.G.
 ```commandline
 sudo apt install python3-opencv
 ```
+
+### If you're using the Lite OS you will also need to install:
+
 
 ### Install pip requirements including system-wide packages (we need to use the system picamera2 install...)
 ```commandline
