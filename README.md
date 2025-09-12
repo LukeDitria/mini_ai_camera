@@ -80,6 +80,14 @@ sudo systemctl daemon-reload
 sudo systemctl enable data_logger.service
 sudo systemctl start data_logger.service
 ```
+ You can also use the "status", "stop" and "restart" commands!
+```commandline
+sudo systemctl status data_logger.service
+sudo systemctl stop data_logger.service
+sudo systemctl restart data_logger.service
+```
+It's a good idea to stop the service running if you are still setting up the Pi!
+
 
 # Auto Mounting a USB Drive!
 ### If you are using the full desktop OS then ANY USB storage device will be automatically mounted in /media
