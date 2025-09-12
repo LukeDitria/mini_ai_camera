@@ -83,8 +83,8 @@ sudo systemctl start data_logger.service
 
 # Auto Mounting a USB Drive!
 ### If you are using the full desktop OS then ANY USB storage device will be automatically mounted in /media
-### However, if you are using the OS Lite this will not happen and you will need to configure every USB device you want to use
-### so it will auto mount when plugged in...
+### However, if you are using the OS Lite this will not happen and you will need to configure every USB device you want to use so it will auto mount when plugged in...
 ### Follow this guide to know how!
 [Mount a USB Drive to the Raspberry Pi Manually](https://pimylifeup.com/raspberry-pi-mount-usb-drive/)
+### (go to the "Mount a USB Drive to the Raspberry Pi Manually" section)
 
