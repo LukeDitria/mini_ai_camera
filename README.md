@@ -1,4 +1,8 @@
-# Installing Requirements
+# Mini Raspberry Pi AI Wildlife monitor!
+Video here:
+https://youtu.be/qhY_3XCSYsM
+
+## Installing Requirements
 Steps for setting up your raspberry pi!
 You'll need to install a few things first...
 
