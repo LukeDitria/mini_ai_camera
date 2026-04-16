@@ -6,36 +6,41 @@ https://youtu.be/qhY_3XCSYsM
 Steps for setting up your raspberry pi!
 You'll need to install a few things first...
 
+## Requirements
+PV PI Manager is designed to operate on Raspberry Pi compatible devices.  
+The following setup was verified on a Raspberry Pi 5 and Pi Zero 2W with Raspberry Pi OS Trixie.<br>
+It requires Python>=3.13
+
 ### Update Pi if you haven't already
 ```commandline
-sudo apt update && sudo apt full-upgrade
+sudo apt update && sudo apt full-upgrade -y
 ```
 
 ### Picamera2
 #### Picamera2 will already be install on the full desktop version. On systems where Picamera2 is supported but not pre-installed you can install it with:
 ```commandline
-sudo apt install python3-picamera2
+sudo apt install python3-picamera2 -y
 ```
 #### Use this slightly reduced installation for installing on a Raspberry Pi __OS Lite system!__
 ```commandline
-sudo apt install python3-picamera2 --no-install-recommends
+sudo apt install python3-picamera2 --no-install-recommends -y
 ```
 
 ### Other Requirements
 #### IMX500 (AI Camera)
 ```commandline
-sudo apt install imx500-all
+sudo apt install imx500-all -y
 ```
 #### picamera2 tells us to install system wide
 #### Therefore we need to install opencv etc, also at the system level...
 ```commandline
-sudo apt install python3-opencv
+sudo apt install python3-opencv -y
 ```
 
 ### OS Lite!
 #### If you're using the Lite OS you will also need to install:
 ```commandline
-sudo apt install git
+sudo apt install git -y
 ```
 
 ### Python `uv`
@@ -62,6 +67,7 @@ git clone https://github.com/LukeDitria/mini_ai_camera.git
 ```commandline
 cd mini_ai_camera
 uv venv --system-site-packages
+uv sync
 ```
 
 ## Quick-start
