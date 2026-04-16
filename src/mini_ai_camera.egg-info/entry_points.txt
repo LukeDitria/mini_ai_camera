@@ -1,0 +1,2 @@
+[console_scripts]
+ai_cam = ai_cam.cli:cli

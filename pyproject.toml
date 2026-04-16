@@ -1,0 +1,42 @@
+[project]
+name = "mini-ai-camera"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [
+  {name = "Luke Ditria"},
+]
+
+dependencies = [
+    "sdnotify",
+    "click>=8.3.1",
+    "platformdirs>=4.5.1",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "pyserial>=3.5",
+    ]
+
+[dependency-groups]
+dev = [
+]
+
+[tool.uv]
+package = true
+
+[project.scripts]
+ai_cam = "ai_cam.cli:cli"
+
+[tool.ruff]
+line-length = 120
+[tool.ruff.lint]
+extend-select = [
+    "B",
+    "I",
+    "UP",
+    "TID",
+    "A",
+    "SIM",
+    "LOG",
+    "G"
+]
