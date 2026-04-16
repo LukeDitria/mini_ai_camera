@@ -6,7 +6,7 @@ import logging
 import json
 import cv2
 
-import ai_cam.utils
+import ai_cam.utils as utils
 
 class DataLogger:
     def __init__(self, device_name: str, output_dir: str, save_data: bool,
