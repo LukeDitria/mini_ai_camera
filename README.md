@@ -6,8 +6,7 @@ https://youtu.be/qhY_3XCSYsM
 Steps for setting up your raspberry pi!
 You'll need to install a few things first...
 
-## Base System Requirements
-PV PI Manager is designed to operate on Raspberry Pi compatible devices.  
+## Base System Requirements 
 The following setup was verified on a Raspberry Pi 5 and Pi Zero 2W with Raspberry Pi OS **Trixie**.<br>
 It requires **system wide** Python>=3.13<br>
 It's best if you start with a fresh OS...
