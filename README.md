@@ -56,14 +56,14 @@ sudo reboot now
 ```
 
 
-## mini_ai_camera Installation
+# mini_ai_camera Installation
 
 Clone the repo:
 ```shell
 git clone https://github.com/LukeDitria/mini_ai_camera.git
 ```
 
-## Install requirements including system-wide packages (we need to use the system picamera2 install...)
+# Install requirements including system-wide packages (we need to use the system picamera2 install...)
 ```commandline
 cd mini_ai_camera
 uv venv --system-site-packages
