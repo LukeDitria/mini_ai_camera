@@ -2,68 +2,69 @@
 Video here:
 https://youtu.be/qhY_3XCSYsM
 
-## Installing Requirements!
+# 1. Installing Requirements!
 Steps for setting up your raspberry pi!
 You'll need to install a few things first...
 
-## Requirements
+## Base System Requirements
 PV PI Manager is designed to operate on Raspberry Pi compatible devices.  
-The following setup was verified on a Raspberry Pi 5 and Pi Zero 2W with Raspberry Pi OS Trixie.<br>
-It requires Python>=3.13
+The following setup was verified on a Raspberry Pi 5 and Pi Zero 2W with Raspberry Pi OS **Trixie**.<br>
+It requires **system wide** Python>=3.13<br>
+It's best if you start with a fresh OS...
 
 ### Update Pi if you haven't already
 ```commandline
 sudo apt update && sudo apt full-upgrade -y
 ```
 
-### Picamera2
-#### Picamera2 will already be install on the full desktop version. On systems where Picamera2 is supported but not pre-installed you can install it with:
+## Picamera2
+Picamera2 will already be install on the **full desktop version**. On systems where Picamera2 is supported but not pre-installed you can install it with:
 ```commandline
 sudo apt install python3-picamera2 -y
 ```
-#### Use this slightly reduced installation for installing on a Raspberry Pi __OS Lite system!__
+ Use this slightly reduced installation for installing on a Raspberry Pi **OS Lite system!**
 ```commandline
 sudo apt install python3-picamera2 --no-install-recommends -y
 ```
 
-### Other Requirements
-#### IMX500 (AI Camera)
+## IMX500 (AI Camera)
 ```commandline
 sudo apt install imx500-all -y
 ```
-#### picamera2 tells us to install system wide
-#### Therefore we need to install opencv etc, also at the system level...
+
+## OpenCV
+picamera2 tells us to install **system wide**. Therefore we need to install opencv etc, also at the system level...
 ```commandline
 sudo apt install python3-opencv -y
 ```
 
-### OS Lite!
-#### If you're using the Lite OS you will also need to install:
+## OS Lite!
+If you're using the Lite OS you will also need to install:
 ```commandline
 sudo apt install git -y
 ```
 
-### Python `uv`
+## Python `uv`
 
 Python packager manager [uv](https://docs.astral.sh/uv) is the preferred method for operating the mini_ai_camera.
 ```shell
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### Reboot Pi after install!
+## Reboot Pi after install!
 ```commandline
 sudo reboot now
 ```
 
 
-# mini_ai_camera Installation
+# 2. mini_ai_camera Installation
 
 Clone the repo:
 ```shell
 git clone https://github.com/LukeDitria/mini_ai_camera.git
 ```
 
-# Install requirements including system-wide packages (we need to use the system picamera2 install...)
+## Install requirements including system-wide packages (we need to use the system picamera2 install...)
 ```commandline
 cd mini_ai_camera
 uv venv --system-site-packages
@@ -73,7 +74,7 @@ uv sync
 ## Quick-start
 
 ```shell
-uv run ai_cam  # show usage help
+uv run ai_cam
 ```
 
 ## Install AI Camera Service
@@ -83,7 +84,7 @@ Repo comes with an `install` command to setup the systemd service
 uv run ai_cam install
 ```
 
-# Updating the config.json
+# 3. Updating the config.json
 When you install the service a default config.json file will be created in the mini_ai_camera directory. Subsequent restarts of the service will load configuration parameters from this config.json.
 
 You can change the behaviour of the services by editing and saving this file and restarting the AI detector services.
@@ -115,7 +116,7 @@ All settings live in `config.json`
 | `auto_select_media` | `false` | Auto-detect USB drive under `/media` for output |
 
 
-# More about systemd
+# 4. More about systemd
 
 (i) `systemd` is the standard system and service manager for modern Linux distributions. Once installed, you can check the `status`, `start`, `stop`, or `restart` the Ai Cam services using the `systemctl` command:
 ```shell
@@ -137,9 +138,11 @@ journalctl -u ai_data_logger.service -f
 
 (i) `journalctl` is a Linux command-line tool for viewing and managing logs from `systemd`. Logs can be filtered by process and time. [Learn more](https://www.digitalocean.com/community/tutorials/how-to-use-journalctl-to-view-and-manipulate-systemd-logs).
 
-# Auto Mounting a USB Drive!
-### If you are using the full desktop OS then ANY USB storage device will be automatically mounted in /media
-### However, if you are using the OS Lite this will not happen and you will need to configure *every* USB device you want to use so it will auto mount when plugged in...
+# 5. Auto Mounting a USB Drive! (Optional)
+If **auto_select_media** is set to **true** (it is false by default) the data_logger will try to find a storage device in /media to save image/video/data to. <br>
+<br>
+If you are using the full desktop OS then ANY USB storage device will be automatically mounted in /media.
+**However**, if you are using the **OS Lite** this will not happen and you will need to configure *every* USB device you want to use so it will auto mount when plugged in...
 ## 📂 Auto-Mounting a USB Drive by UUID
 
 If you want your Raspberry Pi (or Linux system) to automatically mount a USB drive at boot, you can use its **UUID** in `/etc/fstab`. This ensures the correct drive is mounted every time, even if the device path (`/dev/sda1`, `/dev/sdb1`, etc.) changes.
