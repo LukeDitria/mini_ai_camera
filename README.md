@@ -2,7 +2,7 @@
 Video here:
 https://youtu.be/qhY_3XCSYsM
 
-## Installing Requirements
+## Installing Requirements!
 Steps for setting up your raspberry pi!
 You'll need to install a few things first...
 
@@ -11,91 +11,129 @@ You'll need to install a few things first...
 sudo apt update && sudo apt full-upgrade
 ```
 
-## Picamera2
-#### Picamera2 will already be install on the full desktop version
-#### On systems where Picamera2 is supported but not pre-installed (Such as the Lite OS), you can install it with
+### Picamera2
+#### Picamera2 will already be install on the full desktop version. On systems where Picamera2 is supported but not pre-installed you can install it with:
 ```commandline
 sudo apt install python3-picamera2
 ```
-#### OR to get a slightly reduced installation with fewer of the window system related elements (USE THIS for installing on a Raspberry Pi OS Lite system)
+#### Use this slightly reduced installation for installing on a Raspberry Pi __OS Lite system!__
 ```commandline
 sudo apt install python3-picamera2 --no-install-recommends
 ```
 
-## Other Requirements
-### IMX500 (AI Camera)
+### Other Requirements
+#### IMX500 (AI Camera)
 ```commandline
 sudo apt install imx500-all
 ```
-### picamera2 tells us to install system wide
-### Therefore we need to install opencv etc, also at the system level...
-### E.G.
+#### picamera2 tells us to install system wide
+#### Therefore we need to install opencv etc, also at the system level...
 ```commandline
 sudo apt install python3-opencv
 ```
 
-## OS Lite!
-### If you're using the Lite OS you will also need to install:
+### OS Lite!
+#### If you're using the Lite OS you will also need to install:
 ```commandline
-sudo apt install python3-picamera2 --no-install-recommends
 sudo apt install git
 ```
 
-## Reboot Pi after install!
+### Python `uv`
 
+Python packager manager [uv](https://docs.astral.sh/uv) is the preferred method for operating the mini_ai_camera.
+```shell
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Reboot Pi after install!
 ```commandline
 sudo reboot now
 ```
 
-# Git Clone the repo!
-### If using the Lite OS first
-```commandline
-mkdir Documents
-```
-### then
-```commandline
-cd Documents
+
+## mini_ai_camera Installation
+
+Clone the repo:
+```shell
 git clone https://github.com/LukeDitria/mini_ai_camera.git
 ```
 
-## Install pip requirements including system-wide packages (we need to use the system picamera2 install...)
+## Install requirements including system-wide packages (we need to use the system picamera2 install...)
 ```commandline
-cd mini_ai_camera/
-python -m venv venv --system-site-packages
-source venv/bin/activate
-pip install -r requirements.txt
-deactivate
+cd mini_ai_camera
+uv venv --system-site-packages
 ```
 
-## Check file paths in data_logger.sh and data_logger.service are correct for you!!
-### Activate script
-```commandline
-chmod +x data_logger.sh
-```
-### Test run!
-```commandline
-./data_logger.sh
+## Quick-start
+
+```shell
+uv run ai_cam  # show usage help
 ```
 
-## Creating a service
-```commandline
-sudo cp data_logger.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable data_logger.service
-sudo systemctl start data_logger.service
-```
- You can also use the "status", "stop" and "restart" commands!
-```commandline
-sudo systemctl status data_logger.service
-sudo systemctl stop data_logger.service
-sudo systemctl restart data_logger.service
-```
-It's a good idea to stop the service running if you are still setting up the Pi!
+## Install AI Camera Service
+Repo comes with an `install` command to setup the systemd service
 
+```shell
+uv run ai_cam install
+```
+
+# Updating the config.json
+When you install the service a default config.json file will be created in the mini_ai_camera directory. Subsequent restarts of the service will load configuration parameters from this config.json.
+
+You can change the behaviour of the services by editing and saving this file and restarting the AI detector services.
+```shell
+uv run ai_cam restart
+```
+
+## Configuration
+All settings live in `config.json`
+
+| Key | Default | Description |
+|---|---|---|
+| `output_dir` | `output` | Local fallback output directory |
+| `device_name` | `site1` | Name embedded in output filenames |
+| `model` | `yolov8n.rpk` | Path to the compiled yolo model file |
+| `labels` | `coco_labels.txt` | Path to class labels |
+| `valid_classes` | *(none)* | Optional path to a subset of classes to detect |
+| `confidence` | `0.5` | Detection confidence threshold (0–1) |
+| `iou_threshold` | `0.5` | NMS IoU threshold (0–1) |
+| `ips` | `5` | Max inferences per second |
+| `lps` | *(none)* | Max log writes per second (defaults to every inference) |
+| `video_size` | `"1920,1080"` | Camera resolution as `"width,height"` |
+| `buffer_secs` | `3` | Circular video buffer length in seconds |
+| `detection_run` | `5` | Consecutive detections before recording starts |
+| `save_video` | `false` | Save H.264 video clips |
+| `save_images` | `false` | Save JPEG frames on detection |
+| `save_data` | `false` | Save per-detection JSON files |
+| `draw_bbox` | `false` | Draw bounding boxes on saved images |
+| `auto_select_media` | `false` | Auto-detect USB drive under `/media` for output |
+
+
+# More about systemd
+
+(i) `systemd` is the standard system and service manager for modern Linux distributions. Once installed, you can check the `status`, `start`, `stop`, or `restart` the Ai Cam services using the `systemctl` command:
+```shell
+sudo systemctl status ai_data_logger.service
+```
+
+For example, to stop and disable the service so it will no longer run on boot:
+```shell
+sudo systemctl stop ai_data_logger.service
+sudo systemctl disable ai_data_logger.service
+```
+
+While the status of services can be viewed with `systemctl` as shown above, the log output can be followed using `journalctl`.
+
+To follow the **live** log output from the service:
+```shell
+journalctl -u ai_data_logger.service -f
+```
+
+(i) `journalctl` is a Linux command-line tool for viewing and managing logs from `systemd`. Logs can be filtered by process and time. [Learn more](https://www.digitalocean.com/community/tutorials/how-to-use-journalctl-to-view-and-manipulate-systemd-logs).
 
 # Auto Mounting a USB Drive!
 ### If you are using the full desktop OS then ANY USB storage device will be automatically mounted in /media
-### However, if you are using the OS Lite this will not happen and you will need to configure every USB device you want to use so it will auto mount when plugged in...
+### However, if you are using the OS Lite this will not happen and you will need to configure *every* USB device you want to use so it will auto mount when plugged in...
 ## 📂 Auto-Mounting a USB Drive by UUID
 
 If you want your Raspberry Pi (or Linux system) to automatically mount a USB drive at boot, you can use its **UUID** in `/etc/fstab`. This ensures the correct drive is mounted every time, even if the device path (`/dev/sda1`, `/dev/sdb1`, etc.) changes.
