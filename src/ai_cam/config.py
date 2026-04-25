@@ -21,16 +21,17 @@ class CamConfig(BaseSettings, extra="forbid"):
     iou_threshold: float = Field(default=0.5, ge=0, le=1, description="IOU threshold")
 
     ips: int = Field(default=5, gt=0, description="Inferences per second")
-    lps: int | None = Field(default=None, description="Logs per second")
 
     video_size: str = Field(default="1920,1080", description="Video size as width,height")
 
     buffer_secs: int = Field(default=3, gt=0, description="Circular buffer size in seconds")
-    detection_run: int = Field(default=5, gt=0, description="Number of detections in a row before recording starts")
+
+    ema_alpha: float = Field(default=0.2, ge=0, le=1, description="EMA smoothing factor")
+    event_threshold: float = Field(default=0.4, ge=0, le=1, description="EMA confidence threshold to trigger an event")
 
     save_video: bool = Field(default=False, description="Save video clips of detections")
     save_images: bool = Field(default=False, description="Save images of detections")
-    save_data: bool = Field(default=False, description="Save detection data json")
+    save_data: bool = Field(default=True, description="Save detection data json")
     auto_select_media: bool = Field(default=False, description="Auto select mounted /media storage device")
     draw_bbox: bool = Field(default=False, description="Draw bounding boxes on saved images")
 
