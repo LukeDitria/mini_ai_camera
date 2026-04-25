@@ -40,7 +40,7 @@ class CameraCSI():
 
         if self.save_video:
             self.encoder = H264Encoder(1000000, repeat=True)
-            self.output = CircularOutput(buffersize=self.buffer_secs * self.fps)
+            self.output = CircularOutput(buffersize=self.buffer_secs * 30)
             self.picam2.start_recording(self.encoder, self.output, quality=Quality.HIGH)
             self.logger.info(f"Saving Video")
 
