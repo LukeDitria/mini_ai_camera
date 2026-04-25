@@ -22,11 +22,12 @@ class IMX500Yolo:
 
         self.yolo_model = IMX500(model_path)
         self.intrinsics = self.yolo_model.network_intrinsics
-        self.network_ips = self.intrinsics.inference_rate
 
         if not self.intrinsics:
             self.intrinsics = NetworkIntrinsics()
             self.intrinsics.task = "object detection"
+            
+        self.network_ips = self.intrinsics.inference_rate
 
         logging.info(f"postprocess: {self.intrinsics.postprocess}")
 
