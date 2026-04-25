@@ -59,77 +59,92 @@ class DetectorLogger:
         )
 
         # EMA state
-        self.ema_confidence = 0.0
-        self.ema_alpha = self.config.ema_alpha          # e.g. 0.2
-        self.event_threshold = self.config.event_threshold  # e.g. 0.4
+        self.ema_per_class: dict[str, float] = {}
+        self.ema_alpha = self.config.ema_alpha
+        self.event_threshold = self.config.event_threshold
 
         # Event state
         self.in_event = False
-        self.peak_confidence = 0.0
-        self.peak_frame = None
-        self.peak_timestamp = None
-        self.peak_detections = None
+        self.peak_per_class: dict[str, dict] = {}
 
     def _handle_shutdown(self, signum, frame):
         logging.info(f"Shutdown signal received ({signum}), cleaning up...")
         self._running = False
 
-    def _update_ema(self, detections) -> float:
-        """Update EMA with the best confidence score from this frame, or 0 if no detections."""
+    def _update_ema(self, detections) -> dict[str, float]:
+        """Update per-class EMA. Classes with no detection this frame decay toward 0."""
+        scores_this_frame: dict[str, float] = {}
         if detections:
-            best_score = max(d.score for d in detections)
-        else:
-            best_score = 0.0
-        self.ema_confidence = (
-            self.ema_alpha * best_score
-            + (1 - self.ema_alpha) * self.ema_confidence
-        )
-        return self.ema_confidence
+            for d in detections:
+                if d.class_name not in scores_this_frame or d.score > scores_this_frame[d.class_name]:
+                    scores_this_frame[d.class_name] = d.score
 
-    def _on_event_start(self, detections, frame, timestamp):
-        logging.info(f"Event started — EMA confidence: {self.ema_confidence:.2f}")
+        all_classes = set(self.ema_per_class) | set(scores_this_frame)
+        for cls in all_classes:
+            current_score = scores_this_frame.get(cls, 0.0)
+            prev_ema = self.ema_per_class.get(cls, 0.0)
+            self.ema_per_class[cls] = (
+                self.ema_alpha * current_score
+                + (1 - self.ema_alpha) * prev_ema
+            )
+
+        return self.ema_per_class
+
+    def _classes_above_threshold(self) -> list[str]:
+        return [
+            cls for cls, ema in self.ema_per_class.items()
+            if ema >= self.event_threshold
+        ]
+
+    def _on_event_start(self, detections, frame, timestamp, active_classes):
+        logging.info(f"Event started — active classes: {active_classes}")
         self.in_event = True
-        self.peak_confidence = self.ema_confidence
-        self.peak_frame = frame.copy()
-        self.peak_timestamp = timestamp
-        self.peak_detections = detections
 
-        # Save the trigger frame
+        # Initialise peak tracking for each active class
+        for cls in active_classes:
+            self.peak_per_class[cls] = {
+                "ema": self.ema_per_class[cls],
+                "frame": frame.copy(),
+                "timestamp": timestamp,
+                "detections": detections
+            }
+
         self.data_logger.log_results(detections, frame, timestamp, frame_type="event_start")
 
         if self.config.save_video:
             self.camera.start_video_recording()
 
     def _on_event_update(self, detections, frame, timestamp):
-        """Track the peak confidence frame during an event."""
-        if self.ema_confidence > self.peak_confidence:
-            self.peak_confidence = self.ema_confidence
-            self.peak_frame = frame.copy()
-            self.peak_timestamp = timestamp
-            self.peak_detections = detections
+        for cls, ema in self.ema_per_class.items():
+            if ema < self.event_threshold:
+                continue
+            if cls not in self.peak_per_class or ema > self.peak_per_class[cls]["ema"]:
+                self.peak_per_class[cls] = {
+                    "ema": ema,
+                    "frame": frame.copy(),
+                    "timestamp": timestamp,
+                    "detections": detections
+                }
 
     def _on_event_end(self, detections, frame, timestamp):
-        logging.info(f"Event ended — peak EMA confidence was: {self.peak_confidence:.2f}")
+        logging.info(f"Event ended — saving peaks for: {list(self.peak_per_class.keys())}")
 
-        # Save peak frame
-        if self.peak_frame is not None:
+        # Save best frame per species
+        for cls, peak in self.peak_per_class.items():
             self.data_logger.log_results(
-                self.peak_detections, self.peak_frame,
-                self.peak_timestamp, frame_type="event_peak"
+                peak["detections"], peak["frame"],
+                peak["timestamp"], frame_type=f"event_peak_{cls}"
             )
 
-        # Save the final frame
-        self.data_logger.log_results(detections or self.peak_detections, frame, timestamp, frame_type="event_end")
+        # Save event end frame
+        self.data_logger.log_results(detections, frame, timestamp, frame_type="event_end")
 
         if self.config.save_video:
             self.camera.stop_video_recording()
 
-        # Reset
+        # Reset event state
         self.in_event = False
-        self.peak_confidence = 0.0
-        self.peak_frame = None
-        self.peak_timestamp = None
-        self.peak_detections = None
+        self.peak_per_class = {}
 
     def run(self):
         self._running = True
@@ -159,16 +174,18 @@ class DetectorLogger:
                 if detections and self.config.save_data:
                     self.data_logger.log_data(detections, timestamp, log_type="raw")
 
-                ema = self._update_ema(detections)
-                logging.debug(f"EMA confidence: {ema:.3f}")
+                ema_per_class = self._update_ema(detections)
+                active_classes = self._classes_above_threshold()
+
+                logging.debug(f"EMA per class: { {c: f'{v:.3f}' for c, v in ema_per_class.items()} }")
 
                 # Event state machine
-                if not self.in_event and ema >= self.event_threshold:
-                    self._on_event_start(detections, frame, timestamp)
+                if not self.in_event and active_classes:
+                    self._on_event_start(detections, frame, timestamp, active_classes)
                     encoding = True
-                elif self.in_event and ema >= self.event_threshold:
+                elif self.in_event and active_classes:
                     self._on_event_update(detections, frame, timestamp)
-                elif self.in_event and ema < self.event_threshold:
+                elif self.in_event and not active_classes:
                     self._on_event_end(detections, frame, timestamp)
                     encoding = False
 
