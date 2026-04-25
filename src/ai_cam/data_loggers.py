@@ -43,7 +43,7 @@ class DataLogger:
         self.json_detections_path = os.path.join(self.data_output, "detections")
         os.makedirs(self.json_detections_path, exist_ok=True)
 
-    def _save_img(self, detection_list, frame, timestamp):
+    def _save_img(self, detection_list, frame, timestamp, frame_type):
         if self.draw_bbox:
             try:
                 frame = utils.draw_detections(detection_list, frame)
@@ -51,7 +51,7 @@ class DataLogger:
                 self.logger.info(f"Failed Drawing detections!: {e}")
 
         timestamp_str = timestamp.strftime("%Y%m%d-%H%M%S-%f")[:-3]
-        filename = f"{self.device_name}_{timestamp_str}.jpg"
+        filename = f"{self.device_name}_frame_type_{timestamp_str}.jpg"
 
         # Save the frame locally
         lores_path = os.path.join(self.image_detections_path, filename)
