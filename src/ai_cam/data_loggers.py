@@ -81,9 +81,9 @@ class DataLogger:
 
         self._to_json(detection_dict_list, filename)
 
-def log_results(self, detection_list, frame, timestamp, frame_type: str = "detection"):
-    if self.save_images:
-        self._save_img(detection_list, frame, timestamp, frame_type=frame_type)
-        
-    if self.save_data:
-        self.log_data(detection_list, timestamp, log_type=frame_type)
+    def log_results(self, detection_list, frame, timestamp, frame_type: str = "detection"):
+        if self.save_images:
+            self._save_img(detection_list, frame, timestamp, frame_type=frame_type)
+            
+        if self.save_data:
+            self.log_data(detection_list, timestamp, log_type=frame_type)
