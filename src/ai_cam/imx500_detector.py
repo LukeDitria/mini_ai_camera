@@ -123,7 +123,9 @@ class IMX500Yolo:
 
     def get_detections(self, metadata: Metadata) -> Optional[List[DetectionResultYOLO]]:
         results = self.yolo_model.get_outputs(metadata, add_batch=True)
-
+        logging.debug(f"raw outputs shapes: {[r.shape for r in results]}")
+        logging.debug(f"scores sample: {results[1][0][:5]}")  # first 5 score values
+        
         # Extract and process detections
         detections = self.extract_detections(results, metadata)
 
