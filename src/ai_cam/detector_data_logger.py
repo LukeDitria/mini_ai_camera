@@ -55,7 +55,8 @@ class DetectorLogger:
             video_wh=(self.video_w, self.video_h),
             save_video=self.config.save_video,
             data_output=self.data_logger.data_output,
-            buffer_secs=self.config.buffer_secs
+            buffer_secs=self.config.buffer_secs,
+            fps=self.data_logger.network_ips
         )
 
         # EMA state

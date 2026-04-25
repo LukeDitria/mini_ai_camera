@@ -22,6 +22,7 @@ class IMX500Yolo:
 
         self.yolo_model = IMX500(model_path)
         self.intrinsics = self.yolo_model.network_intrinsics
+        self.network_ips = self.intrinsics.inference_rate
 
         if not self.intrinsics:
             self.intrinsics = NetworkIntrinsics()
@@ -126,6 +127,9 @@ class IMX500Yolo:
         if results:
             logging.info(f"raw outputs shapes: {[r.shape for r in results]}")
             logging.info(f"scores sample: {results[1][0][:5]}")  # first 5 score values
+        else:
+            logging.info(f"No results!")
+
 
         # Extract and process detections
         detections = self.extract_detections(results, metadata)

@@ -11,7 +11,7 @@ from datetime import datetime
 
 class CameraCSI():
     def __init__(self, device_name: str, video_wh: Tuple[int, int] = (1920,1080),
-                save_video: bool = False, data_output: str = ".", buffer_secs: int = 5):
+                save_video: bool = False, data_output: str = ".", buffer_secs: int = 5, fps: int = 10):
 
         self.logger = logging.getLogger(__name__)
         self.logger.info("Camera initialized!")
@@ -32,7 +32,7 @@ class CameraCSI():
 
         # Configure camera stream
         main_res = {'size': self.video_wh, 'format': 'XRGB8888'}
-        controls = {'FrameRate': 30}
+        controls = {'FrameRate': fps}
         config = self.picam2.create_video_configuration(main_res, controls=controls)
         self.picam2.configure(config)
 
@@ -40,7 +40,7 @@ class CameraCSI():
 
         if self.save_video:
             self.encoder = H264Encoder(1000000, repeat=True)
-            self.output = CircularOutput(buffersize=self.buffer_secs * 30)
+            self.output = CircularOutput(buffersize=self.buffer_secs * fps)
             self.picam2.start_recording(self.encoder, self.output, quality=Quality.HIGH)
             self.logger.info(f"Saving Video")
 
