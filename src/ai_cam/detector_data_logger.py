@@ -83,8 +83,6 @@ class DetectorLogger:
         for cls in all_classes:
             current_score = scores_this_frame.get(cls, 0.0)
             prev_ema = self.ema_per_class.get(cls, 0.0)
-            logging.info(f"current_score, {current_score}")
-            logging.info(f"prev_ema, {prev_ema}")
 
             self.ema_per_class[cls] = (
                 self.ema_alpha * current_score
