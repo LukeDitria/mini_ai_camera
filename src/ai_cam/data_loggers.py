@@ -51,7 +51,7 @@ class DataLogger:
                 self.logger.info(f"Failed Drawing detections!: {e}")
 
         timestamp_str = timestamp.strftime("%Y%m%d-%H%M%S-%f")[:-3]
-        filename = f"{self.device_name}_frame_type_{timestamp_str}.jpg"
+        filename = f"{self.device_name}_{frame_type}_{timestamp_str}.jpg"
 
         # Save the frame locally
         lores_path = os.path.join(self.image_detections_path, filename)
