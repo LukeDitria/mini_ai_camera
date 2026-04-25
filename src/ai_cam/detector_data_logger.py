@@ -172,7 +172,7 @@ class DetectorLogger:
 
                 # if detection_results is none, the NO inference results is provided
                 # "no detections" will result in an empty list
-                if detection_results:
+                if detection_results is not None:
                     if self.config.save_data:
                         self.data_logger.log_data(detection_results, timestamp, log_type="raw")
 
