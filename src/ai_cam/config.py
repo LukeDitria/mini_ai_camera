@@ -56,6 +56,6 @@ class CamConfig(BaseSettings, extra="forbid"):
                 data = cfg.model_dump(mode='json')
                 with open(path, 'w') as f:
                     json.dump(data, f, indent=2, default=str)
-                return cls
+                return cfg
 
         raise ValueError(f"unsupported file type '{ext}'")
