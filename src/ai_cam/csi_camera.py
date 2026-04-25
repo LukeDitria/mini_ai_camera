@@ -11,7 +11,8 @@ from datetime import datetime
 
 class CameraCSI():
     def __init__(self, device_name: str, video_wh: Tuple[int, int] = (1920,1080),
-                save_video: bool = False, data_output: str = ".", buffer_secs: int = 5, fps: int = 10):
+                save_video: bool = False, data_output: str = ".", buffer_secs: int = 5, 
+                fps: int = 10, camera_num: int = 0):
 
         self.logger = logging.getLogger(__name__)
         self.logger.info("Camera initialized!")
@@ -28,12 +29,12 @@ class CameraCSI():
             self.videos_detections_path = os.path.join(self.data_output, "videos")
             os.makedirs(self.videos_detections_path, exist_ok=True)
 
-        self.picam2 = Picamera2()
+        self.picam2 = Picamera2(camera_num)
 
         # Configure camera stream
         main_res = {'size': self.video_wh, 'format': 'XRGB8888'}
         controls = {'FrameRate': fps}
-        config = self.picam2.create_video_configuration(main_res, controls=controls)
+        config = self.picam2.create_video_configuration(controls=controls)
         self.picam2.configure(config)
 
         self.picam2.start()

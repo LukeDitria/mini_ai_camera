@@ -28,7 +28,7 @@ class IMX500Yolo:
             self.intrinsics.task = "object detection"
 
         self.intrinsics.update_with_defaults()
-        
+
         self.network_ips = self.intrinsics.inference_rate
         logging.info(f"inference_rate: {self.network_ips}")
 
@@ -133,7 +133,6 @@ class IMX500Yolo:
             logging.info(f"scores sample: {results[1][0][:5]}")  # first 5 score values
         else:
             logging.info(f"No results!")
-
 
         # Extract and process detections
         detections = self.extract_detections(results, metadata)
