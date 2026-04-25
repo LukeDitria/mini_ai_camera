@@ -17,10 +17,7 @@ class DetectorLogger:
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(levelname)s - %(message)s",
-            handlers=[
-                logging.StreamHandler(sys.stdout),
-                logging.StreamHandler(sys.stderr)
-            ]
+            stream=sys.stdout
         )
         logging.info("Capture Box Awake!")
         self.n = sdnotify.SystemdNotifier()
