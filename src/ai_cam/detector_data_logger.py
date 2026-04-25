@@ -168,32 +168,34 @@ class DetectorLogger:
                 if frame is None:
                     continue
 
-                detections = self.detector.get_detections(metadata)
+                detection_results = self.detector.get_detections(metadata)
 
-                # Always save raw detection data every frame
-                if detections and self.config.save_data:
-                    self.data_logger.log_data(detections, timestamp, log_type="raw")
+                # if detection_results is none, the NO inference results is provided
+                # "no detections" will result in an empty list
+                if detection_results:
+                    if self.config.save_data:
+                        self.data_logger.log_data(detection_results, timestamp, log_type="raw")
 
-                ema_per_class = self._update_ema(detections)
-                active_classes = self._classes_above_threshold()
+                    ema_per_class = self._update_ema(detection_results)
+                    active_classes = self._classes_above_threshold()
 
-                logging.info(f"EMA per class: { {c: f'{v:.3f}' for c, v in ema_per_class.items()} }")
+                    logging.info(f"EMA per class: { {c: f'{v:.3f}' for c, v in ema_per_class.items()} }")
 
-                # Event state machine
-                if not self.in_event and active_classes:
-                    self._on_event_start(detections, frame, timestamp, active_classes)
-                    encoding = True
-                elif self.in_event and active_classes:
-                    self._on_event_update(detections, frame, timestamp)
-                elif self.in_event and not active_classes:
-                    self._on_event_end(detections, frame, timestamp)
-                    encoding = False
+                    # Event state machine
+                    if not self.in_event and active_classes:
+                        self._on_event_start(detection_results, frame, timestamp, active_classes)
+                        encoding = True
+                    elif self.in_event and active_classes:
+                        self._on_event_update(detection_results, frame, timestamp)
+                    elif self.in_event and not active_classes:
+                        self._on_event_end(detection_results, frame, timestamp)
+                        encoding = False
 
-                # Frame timing
-                time_diff = time.time() - last_frame_time
-                wait_time = max(0, seconds_per_frame - time_diff)
-                time.sleep(wait_time)
-                last_frame_time = time.time()
+                    # Frame timing
+                    time_diff = time.time() - last_frame_time
+                    wait_time = max(0, seconds_per_frame - time_diff)
+                    time.sleep(wait_time)
+                    last_frame_time = time.time()
 
                 # Systemd watchdog
                 if time.time() - last_heartbeat_time >= 10:

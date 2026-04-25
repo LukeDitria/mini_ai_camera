@@ -122,7 +122,7 @@ class IMX500Yolo:
                 unique_results = apply_nms(results, nms_threshold=self.iou_threshold)
                 return unique_results
             else:
-                return None
+                return []
         else:
             return None
 

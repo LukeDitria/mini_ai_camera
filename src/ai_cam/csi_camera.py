@@ -47,8 +47,9 @@ class CameraCSI():
 
     def get_frames(self) -> Optional[Tuple[np.ndarray, np.ndarray, Metadata]]:
         # Capture and process frame
-        frame = self.picam2.capture_array("main")
-        metadata = self.picam2.capture_metadata()
+        # frame = self.picam2.capture_array("main")
+        # metadata = self.picam2.capture_metadata()
+        (main, ), metadata = picam2.capture_arrays(["main"])
 
         return frame, metadata
 
