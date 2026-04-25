@@ -136,9 +136,6 @@ class DetectorLogger:
                 peak["timestamp"], frame_type=f"event_peak_{cls}"
             )
 
-        # Save event end frame
-        self.data_logger.log_results(detections, frame, timestamp, frame_type="event_end")
-
         if self.config.save_video:
             self.camera.stop_video_recording()
 
