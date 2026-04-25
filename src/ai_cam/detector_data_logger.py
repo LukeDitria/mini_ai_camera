@@ -179,7 +179,7 @@ class DetectorLogger:
                     ema_per_class = self._update_ema(detection_results)
                     active_classes = self._classes_above_threshold()
 
-                    logging.info(f"EMA per class: { {c: f'{v:.3f}' for c, v in ema_per_class.items()} }")
+                    logging.debug(f"EMA per class: { {c: f'{v:.3f}' for c, v in ema_per_class.items()} }")
 
                     # Event state machine
                     if not self.in_event and active_classes:
