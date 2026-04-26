@@ -54,9 +54,10 @@ class DataLogger:
         filename = f"{self.device_name}_{frame_type}_{timestamp_str}.jpg"
 
         # Save the frame locally
-        lores_path = os.path.join(self.image_detections_path, filename)
+        image_path = os.path.join(self.image_detections_path, filename)
         try:
-            cv2.imwrite(lores_path, frame)
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(image_path, image_rgb)
         except Exception as e:
             self.logger.info(f"Image saving failed: {e}")
 
