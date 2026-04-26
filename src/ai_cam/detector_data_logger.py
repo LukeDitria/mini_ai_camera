@@ -63,7 +63,8 @@ class DetectorLogger:
         # EMA state
         self.ema_per_class: dict[str, float] = {}
         self.ema_alpha = self.config.ema_alpha
-        self.event_threshold = self.config.event_threshold
+        self.event_activate = self.config.event_activate
+        self.event_deactivate = self.config.event_deactivate
 
         # Event state
         self.in_event = False
@@ -73,7 +74,7 @@ class DetectorLogger:
         logging.info(f"Shutdown signal received ({signum}), cleaning up...")
         self._running = False
 
-    def _update_ema(self, detections) -> dict[str, float]:
+    def _update_ema(self, detections) -> None:
         """Update per-class EMA. Classes with no detection this frame decay toward 0."""
         scores_this_frame: dict[str, float] = {}
         if detections:
@@ -82,31 +83,37 @@ class DetectorLogger:
                     scores_this_frame[d.class_name] = d.score
 
         all_classes = set(self.ema_per_class) | set(scores_this_frame)
-        for cls in all_classes:
-            current_score = scores_this_frame.get(cls, 0.0)
-            prev_ema = self.ema_per_class.get(cls, 0.0)
+        for cls_name in all_classes:
+            current_score = scores_this_frame.get(cls_name, 0.0)
+            prev_ema = self.ema_per_class.get(cls_name, 0.0)
 
-            self.ema_per_class[cls] = (
+            self.ema_per_class[cls_name] = (
                 self.ema_alpha * current_score
                 + (1 - self.ema_alpha) * prev_ema
             )
 
-        return self.ema_per_class
-
     def _classes_above_threshold(self) -> list[str]:
         return [
-            cls for cls, ema in self.ema_per_class.items()
-            if ema >= self.event_threshold
+            cls_name for cls_name, ema in self.ema_per_class.items()
+            if ema >= self.event_activate
         ]
+
+    def _all_classes_deactive(self) -> list[str]:
+        deactive = True
+        for cls_name, ema in self.ema_per_class.items():
+            if ema >= self.event_deactivate:
+                deactive = False
+                
+        return deactive
 
     def _on_event_start(self, detections, frame, timestamp, active_classes):
         logging.info(f"Event started — active classes: {active_classes}")
         self.in_event = True
 
         # Initialise peak tracking for each active class
-        for cls in active_classes:
-            self.peak_per_class[cls] = {
-                "ema": self.ema_per_class[cls],
+        for cls_name in active_classes:
+            self.peak_per_class[cls_name] = {
+                "ema": self.ema_per_class[cls_name],
                 "frame": frame.copy(),
                 "timestamp": timestamp,
                 "detections": detections
@@ -118,11 +125,11 @@ class DetectorLogger:
             self.camera.start_video_recording()
 
     def _on_event_update(self, detections, frame, timestamp):
-        for cls, ema in self.ema_per_class.items():
-            if ema < self.event_threshold:
+        for cls_name, ema in self.ema_per_class.items():
+            if ema < self.event_deactivate:
                 continue
-            if cls not in self.peak_per_class or ema > self.peak_per_class[cls]["ema"]:
-                self.peak_per_class[cls] = {
+            if cls_name not in self.peak_per_class or ema > self.peak_per_class[cls_name]["ema"]:
+                self.peak_per_class[cls_name] = {
                     "ema": ema,
                     "frame": frame.copy(),
                     "timestamp": timestamp,
@@ -133,10 +140,10 @@ class DetectorLogger:
         logging.info(f"Event ended — saving peaks for: {list(self.peak_per_class.keys())}")
 
         # Save best frame per species
-        for cls, peak in self.peak_per_class.items():
+        for cls_name, peak in self.peak_per_class.items():
             self.data_logger.log_results(
                 peak["detections"], peak["frame"],
-                peak["timestamp"], frame_type=f"event_peak_{cls}"
+                peak["timestamp"], frame_type=f"event_peak_{cls_name}"
             )
 
         if self.config.save_video:
@@ -170,26 +177,28 @@ class DetectorLogger:
 
                 detection_results = self.detector.get_detections(metadata)
 
-                # if detection_results is none, the NO inference results is provided
+                # if detection_results is none, then NO inference results is provided
                 # "no detections" will result in an empty list
                 if detection_results is not None:
                     if self.config.save_data:
                         self.data_logger.log_data(detection_results, timestamp, log_type="raw")
 
-                    ema_per_class = self._update_ema(detection_results)
-                    active_classes = self._classes_above_threshold()
+                    self._update_ema(detection_results)
 
-                    logging.debug(f"EMA per class: { {c: f'{v:.3f}' for c, v in ema_per_class.items()} }")
+                    logging.debug(f"EMA per class: { {c: f'{v:.3f}' for c, v in self.ema_per_class.items()} }")
 
                     # Event state machine
-                    if not self.in_event and active_classes:
-                        self._on_event_start(detection_results, frame, timestamp, active_classes)
-                        encoding = True
-                    elif self.in_event and active_classes:
-                        self._on_event_update(detection_results, frame, timestamp)
-                    elif self.in_event and not active_classes:
-                        self._on_event_end(detection_results, frame, timestamp)
-                        encoding = False
+                    if not self.in_event:
+                        active_classes = self._classes_above_threshold()
+                        if active_classes:
+                            self._on_event_start(detection_results, frame, timestamp, active_classes)
+                            encoding = True
+                    else:
+                        if self._all_classes_deactive():
+                            self._on_event_end(detection_results, frame, timestamp)
+                            encoding = False
+                        else:
+                            self._on_event_update(detection_results, frame, timestamp)
 
                     # Frame timing
                     time_diff = time.time() - last_frame_time
