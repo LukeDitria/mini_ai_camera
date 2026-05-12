@@ -60,7 +60,7 @@ class CameraCSI():
 
         return frame, metadata
 
-    def update_detections(detections: List[DetectionResultYOLO]):
+    def update_detections(self, detections: List[DetectionResultYOLO]):
         self.latest_detections = detections
 
     def video_bbox(self, request):
