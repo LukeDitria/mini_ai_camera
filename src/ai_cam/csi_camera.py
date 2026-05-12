@@ -63,7 +63,7 @@ class CameraCSI():
     def update_detections(detections: List[DetectionResultYOLO]):
         self.latest_detections = detections
 
-    def video_bbox(request):
+    def video_bbox(self, request):
         with MappedArray(request, "main") as m:
             if self.latest_detections is not None:
                 utils.draw_detections(self.latest_detections, m.array)
