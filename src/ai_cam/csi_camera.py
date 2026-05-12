@@ -10,7 +10,7 @@ import logging
 from typing import List
 
 from datetime import datetime
-from ai_cam.utils import DetectionResultYOLO
+from ai_cam.utils import DetectionResultYOLO, draw_detections
 
 class CameraCSI():
     def __init__(self, device_name: str, video_wh: Tuple[int, int] = (1920,1080),
@@ -66,7 +66,7 @@ class CameraCSI():
     def video_bbox(self, request):
         with MappedArray(request, "main") as m:
             if self.latest_detections is not None:
-                utils.draw_detections(self.latest_detections, m.array)
+                draw_detections(self.latest_detections, m.array)
 
     def start_video_recording(self):
         if self.save_video:
