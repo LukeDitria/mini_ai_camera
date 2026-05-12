@@ -1,18 +1,20 @@
 from picamera2 import Picamera2, Preview, Metadata
 from picamera2.encoders import H264Encoder, Quality
 from picamera2.outputs import CircularOutput
+
 import cv2
 import numpy as np
 from typing import Optional, Tuple
-
 import os
 import logging
+
 from datetime import datetime
+from ai_cam.utils import DetectionResultYOLO
 
 class CameraCSI():
     def __init__(self, device_name: str, video_wh: Tuple[int, int] = (1920,1080),
                 save_video: bool = False, data_output: str = ".", buffer_secs: int = 5, 
-                fps: int = 10, camera_num: int = 0):
+                fps: int = 10, camera_num: int = 0, draw_bbox: bool = False):
 
         self.logger = logging.getLogger(__name__)
         self.logger.info("Camera initialized!")
@@ -24,12 +26,18 @@ class CameraCSI():
         self.buffer_secs = buffer_secs
         self.video_file_name = None
 
+        self.latest_detections = None
+        self.draw_bbox = draw_bbox
+
         self.data_output = data_output
         if self.save_video:
             self.videos_detections_path = os.path.join(self.data_output, "videos")
             os.makedirs(self.videos_detections_path, exist_ok=True)
 
         self.picam2 = Picamera2(camera_num)
+
+        if self.draw_bbox:
+            self.picam2.post_callback = self.video_bbox
 
         # Configure camera stream
         main_res = {'size': self.video_wh, 'format': 'XRGB8888'}
@@ -50,6 +58,14 @@ class CameraCSI():
         (frame, ), metadata = self.picam2.capture_arrays(["main"])
 
         return frame, metadata
+
+    def update_detections(detections: List[DetectionResultYOLO]):
+        self.latest_detections = detections
+
+    def video_bbox(request):
+        with MappedArray(request, "main") as m:
+            if self.latest_detections is not None:
+                utils.draw_detections(self.latest_detections, m.array)
 
     def start_video_recording(self):
         if self.save_video:
