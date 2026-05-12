@@ -29,7 +29,7 @@ class IMX500Yolo:
 
         self.intrinsics.update_with_defaults()
 
-        self.network_ips = self.intrinsics.inference_rate
+        self.network_ips = int(self.intrinsics.inference_rate)
         logging.info(f"inference_rate: {self.network_ips}")
 
         logging.info(f"postprocess: {self.intrinsics.postprocess}")
