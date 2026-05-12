@@ -7,6 +7,7 @@ import numpy as np
 from typing import Optional, Tuple
 import os
 import logging
+from typing import List
 
 from datetime import datetime
 from ai_cam.utils import DetectionResultYOLO
