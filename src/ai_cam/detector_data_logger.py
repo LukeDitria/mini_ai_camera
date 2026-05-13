@@ -178,12 +178,12 @@ class DetectorLogger:
 
                 detection_results = self.detector.get_detections(metadata)
 
-                if self.config.draw_bbox:
-                    self.camera.update_detections(detection_results)
-
                 # if detection_results is none, then NO inference results is provided
                 # "no detections" will result in an empty list
                 if detection_results is not None:
+                    if self.config.draw_bbox:
+                        self.camera.update_detections(detection_results)
+
                     self._update_ema(detection_results)
                     logging.debug(f"EMA per class: { {c: f'{v:.3f}' for c, v in self.ema_per_class.items()} }")
 
