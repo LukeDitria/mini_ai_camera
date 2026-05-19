@@ -43,7 +43,7 @@ class DataLogger:
         self.json_detections_path = os.path.join(self.data_output, "detections")
         os.makedirs(self.json_detections_path, exist_ok=True)
 
-    def _save_img(self, detection_list, frame, timestamp):
+    def _save_img(self, detection_list, frame, timestamp, frame_type):
         if self.draw_bbox:
             try:
                 frame = utils.draw_detections(detection_list, frame)
@@ -51,12 +51,13 @@ class DataLogger:
                 self.logger.info(f"Failed Drawing detections!: {e}")
 
         timestamp_str = timestamp.strftime("%Y%m%d-%H%M%S-%f")[:-3]
-        filename = f"{self.device_name}_{timestamp_str}.jpg"
+        filename = f"{self.device_name}_{frame_type}_{timestamp_str}.jpg"
 
         # Save the frame locally
-        lores_path = os.path.join(self.image_detections_path, filename)
+        image_path = os.path.join(self.image_detections_path, filename)
         try:
-            cv2.imwrite(lores_path, frame)
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(image_path, image_rgb)
         except Exception as e:
             self.logger.info(f"Image saving failed: {e}")
 
@@ -81,10 +82,9 @@ class DataLogger:
 
         self._to_json(detection_dict_list, filename)
 
-    def log_results(self, detection_list: list, frame: np.ndarray, timestamp: datetime) -> None:
-
+    def log_results(self, detection_list, frame, timestamp, frame_type: str = "detection"):
         if self.save_images:
-            self._save_img(detection_list, frame, timestamp)
-
+            self._save_img(detection_list, frame, timestamp, frame_type=frame_type)
+            
         if self.save_data:
-            self.log_data(detection_list, timestamp, log_type="detection")
+            self.log_data(detection_list, timestamp, log_type=frame_type)
