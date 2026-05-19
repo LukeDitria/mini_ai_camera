@@ -101,19 +101,19 @@ All settings live in `config.json`
 | `model` | `models/yolov8n.rpk` | Path to the compiled yolo model file |
 | `labels` | `models/coco_labels.txt` | Path to class labels |
 | `valid_classes` | *(none)* | Optional path to a subset of classes to detect |
-| `confidence` | `0.5` | Detection confidence threshold (0–1) |
+| `confidence` | `0.5` | Detection confidence threshold for raw detections (0–1) |
 | `iou_threshold` | `0.5` | NMS IoU threshold (0–1) |
 | `ips` | `5` | Max inferences per second |
 | `video_size` | `"1920,1080"` | Camera resolution as `"width,height"` |
-| `buffer_secs` | `3` | Circular video buffer length in seconds |
-| `ema_alpha` | `0.2` | EMA smoothing factor for per-class confidence (0–1) |
+| `buffer_secs` | `3` | Circular video buffer length in seconds (Pre-Capture time) |
+| `ema_alpha` | `0.2` | EMA smoothing factor for per-class confidence (lower=slower) (0–1) |
 | `event_activate` | `0.8` | EMA threshold to trigger an active event (0–1) |
 | `event_deactivate` | `0.5` | EMA threshold to deactivate an event (0–1) |
-| `save_video` | `false` | Save H.264 video clips |
-| `save_images` | `false` | Save JPEG frames on detection |
-| `save_data` | `true` | Save per-detection JSON files |
-| `draw_bbox` | `false` | Draw bounding boxes on saved images |
-| `auto_select_media` | `false` | Auto-detect USB drive under `/media` for output |
+| `save_video` | `false` | Save H.264 video clips? |
+| `save_images` | `false` | Save JPEG frames on detection? |
+| `save_data` | `true` | Save per-detection JSON files? |
+| `draw_bbox` | `false` | Draw bounding boxes on saved images? |
+| `auto_select_media` | `false` | Auto-detect USB drive under `/media` for output? |
 
 
 # 4. More about systemd
