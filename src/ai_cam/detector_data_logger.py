@@ -112,6 +112,7 @@ class DetectorLogger:
         self.in_event = True
 
         # Initialise peak tracking for each active class
+        all_classes = []
         for cls_name in active_classes:
             self.peak_per_class[cls_name] = {
                 "ema": self.ema_per_class[cls_name],
@@ -119,11 +120,13 @@ class DetectorLogger:
                 "timestamp": timestamp,
                 "detections": detections
             }
+            all_classes.append(cls_name)
 
-        self.data_logger.log_results(detections, frame, timestamp, frame_type="event_start")
+        all_classes = "_".join(set(all_classes))
+        self.data_logger.log_results(detections, frame, timestamp, frame_type=f"event_start{all_classes}")
 
         if self.config.save_video:
-            self.camera.start_video_recording()
+            self.camera.start_video_recording(all_classes)
 
     def _on_event_update(self, detections, frame, timestamp):
         for cls_name, ema in self.ema_per_class.items():

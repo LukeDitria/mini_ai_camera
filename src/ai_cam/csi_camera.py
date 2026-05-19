@@ -68,11 +68,11 @@ class CameraCSI():
             if self.latest_detections is not None:
                 draw_detections(self.latest_detections, m.array)
 
-    def start_video_recording(self):
+    def start_video_recording(self, classes_name):
         if self.save_video:
             self.logger.info("Starting Video recording!")
             timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
-            self.video_file_name = os.path.join(self.videos_detections_path, f"{self.device_name}_{timestamp}.h264")
+            self.video_file_name = os.path.join(self.videos_detections_path, f"{self.device_name}_{classes_name}_{timestamp}.h264")
             self.output.fileoutput = self.video_file_name
             self.output.start()
         else:
