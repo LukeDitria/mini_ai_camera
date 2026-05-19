@@ -27,6 +27,11 @@ class IMX500Yolo:
             self.intrinsics = NetworkIntrinsics()
             self.intrinsics.task = "object detection"
 
+        self.intrinsics.update_with_defaults()
+
+        self.network_ips = int(self.intrinsics.inference_rate)
+        logging.info(f"inference_rate: {self.network_ips}")
+
         logging.info(f"postprocess: {self.intrinsics.postprocess}")
 
         self.yolo_model.show_network_fw_progress_bar()
@@ -117,12 +122,17 @@ class IMX500Yolo:
                 unique_results = apply_nms(results, nms_threshold=self.iou_threshold)
                 return unique_results
             else:
-                return None
+                return []
         else:
             return None
 
     def get_detections(self, metadata: Metadata) -> Optional[List[DetectionResultYOLO]]:
         results = self.yolo_model.get_outputs(metadata, add_batch=True)
+        if results:
+            logging.debug(f"raw outputs shapes: {[r.shape for r in results]}")
+            logging.debug(f"scores sample: {results[1][0][:5]}")  # first 5 score values
+        else:
+            logging.debug(f"No results!")
 
         # Extract and process detections
         detections = self.extract_detections(results, metadata)

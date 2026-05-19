@@ -26,7 +26,7 @@ def ai_detector(config: str | None = None):
     _config = CamConfig.from_file(path=config)
     ai_detector = DetectorLogger(_config)
 
-    asyncio.run(ai_detector.run())
+    ai_detector.run()
 
 @cli.command(short_help="Install AI Detector as systemd services")
 @click.option("--config", type=click.Path(exists=True, file_okay=True, dir_okay=False))

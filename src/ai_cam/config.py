@@ -27,7 +27,8 @@ class CamConfig(BaseSettings, extra="forbid"):
     buffer_secs: int = Field(default=3, gt=0, description="Circular buffer size in seconds")
 
     ema_alpha: float = Field(default=0.2, ge=0, le=1, description="EMA smoothing factor")
-    event_threshold: float = Field(default=0.4, ge=0, le=1, description="EMA confidence threshold to trigger an event")
+    event_activate: float = Field(default=0.8, ge=0, le=1, description="EMA confidence threshold to trigger an active event")
+    event_deactivate: float = Field(default=0.5, ge=0, le=1, description="EMA confidence lower threshold to deactivate an event")
 
     save_video: bool = Field(default=False, description="Save video clips of detections")
     save_images: bool = Field(default=False, description="Save images of detections")
