@@ -116,7 +116,7 @@ class IMX500Yolo:
                                  "bbox": box}
 
                     results.append(DetectionResultYOLO.from_dict(detection))
-                    logging.info(f"- {x0}, {y0}, {x1} {y1}: score {score}")
+                    logging.debug(f"- {x0}, {y0}, {x1} {y1}: score {score}")
 
             if len(results) > 0:
                 unique_results = apply_nms(results, nms_threshold=self.iou_threshold)
@@ -138,7 +138,7 @@ class IMX500Yolo:
         detections = self.extract_detections(results, metadata)
 
         if detections:
-            logging.info(f"Detected {len(detections)}")
+            logging.debug(f"Detected {len(detections)}")
             for detection in detections:
                 class_name = detection.class_name
                 score = detection.score
