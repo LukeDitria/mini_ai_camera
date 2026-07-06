@@ -267,6 +267,8 @@ class DetectorLogger:
         try:
             timeout = 0
             while zoomed_detections is None:
+                logging.info(f"Zoom to detection: {detection.class_name}")
+
                 zoom_frame_out, zoom_metadata = self.camera.get_frames()
                 zoomed_detections = self.detector.get_detections(zoom_metadata)
 
@@ -320,12 +322,14 @@ class DetectorLogger:
                 # "no detections" will result in an empty list
                 if detection_results is not None:
                     zoom_detection_results = []
-                    zoom_frame = None
                     for detection in detection_results:
-                        zoom_dets, zoom_frame = self.focus_on_detection(detection, metadata)
 
-                        if zoom_dets is not None:
-                            zoom_detection_results += zoom_dets
+                        if detection.score < 0.5:
+                            zoom_dets, _ = self.focus_on_detection(detection, metadata)
+                            if zoom_dets is not None:
+                                zoom_detection_results += zoom_dets
+                        else:
+                            zoom_detection_results.append(detection)
 
                     if len(zoom_detection_results) > 0:
                         detection_results = zoom_detection_results
