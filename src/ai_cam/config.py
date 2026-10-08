@@ -6,7 +6,6 @@ from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from platformdirs import user_data_dir
 
 
 class CamConfig(BaseSettings, extra="forbid"):

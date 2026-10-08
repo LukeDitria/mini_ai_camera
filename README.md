@@ -37,6 +37,8 @@ picamera2 tells us to install **system wide**. Therefore we need to install open
 sudo apt install python3-opencv -y
 ```
 
+numpy comes with these system packages too. Don't install numpy, opencv or picamera2 into the project's environment with pip or uv: the system versions are the ones that work with the camera.
+
 ## OS Lite!
 If you're using the Lite OS you will also need to install:
 ```commandline
@@ -81,6 +83,14 @@ Repo comes with an `install` command to setup the systemd service
 
 ```shell
 uv run ai_cam install
+```
+
+## Updating
+To update to the latest version, pull the changes, sync the environment and restart the service:
+```shell
+git pull
+uv sync
+uv run ai_cam restart
 ```
 
 # 3. Updating the config.json
