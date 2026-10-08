@@ -108,21 +108,34 @@ All settings live in `config.json`
 |---|---|---|
 | `output_dir` | `output` | Local fallback output directory |
 | `device_name` | `site1` | Name embedded in output filenames |
-| `model` | `yolov8n.rpk` | Path to the compiled yolo model file |
-| `labels` | `coco_labels.txt` | Path to class labels |
+| `model` | `models/yolov8n.rpk` | Path to the compiled yolo model file |
+| `labels` | `models/coco_labels.txt` | Path to class labels |
 | `valid_classes` | *(none)* | Optional path to a subset of classes to detect |
 | `confidence` | `0.5` | Detection confidence threshold (0–1) |
 | `iou_threshold` | `0.5` | NMS IoU threshold (0–1) |
 | `ips` | `5` | Max inferences per second |
-| `lps` | *(none)* | Max log writes per second (defaults to every inference) |
 | `video_size` | `"1920,1080"` | Camera resolution as `"width,height"` |
 | `buffer_secs` | `3` | Circular video buffer length in seconds |
-| `detection_run` | `5` | Consecutive detections before recording starts |
+| `ema_alpha` | `0.2` | How quickly each class's smoothed confidence follows new detections (0–1) |
+| `event_activate` | `0.8` | Smoothed confidence at which an event starts |
+| `event_deactivate` | `0.5` | Smoothed confidence below which an event ends |
 | `save_video` | `false` | Save H.264 video clips |
 | `save_images` | `false` | Save JPEG frames on detection |
-| `save_data` | `false` | Save per-detection JSON files |
+| `save_data` | `true` | Save per-detection JSON files |
 | `draw_bbox` | `false` | Draw bounding boxes on saved images |
 | `auto_select_media` | `false` | Auto-detect USB drive under `/media` for output |
+| `zoom_to_roi` | `false` | Re-check uncertain detections with the camera zoomed in on them (see below) |
+| `zoom_below` | `0.5` | Detections below this confidence are re-checked zoomed in |
+| `zoom_timeout_secs` | `1` | How long to wait for the zoomed view before keeping the original detection |
+| `save_zoom_images` | `false` | Save the zoomed image of each re-checked detection |
+
+## Zooming in on uncertain detections
+The AI camera can run its model on just part of the sensor. With `zoom_to_roi` on, a detection under `zoom_below` is checked again with the model zoomed in on it, which gives a small or distant animal many more pixels:
+- if the zoomed view finds something, that replaces the uncertain detection;
+- if it finds nothing, the detection is dropped;
+- if the camera doesn't answer within `zoom_timeout_secs`, the original detection is kept.
+
+Each check takes a few hundred milliseconds, while the camera switches over and back. With `save_zoom_images` on, the zoomed part of the frame is saved too, as `<device>_zoom_<class>_<time>.jpg`.
 
 
 # 4. More about systemd

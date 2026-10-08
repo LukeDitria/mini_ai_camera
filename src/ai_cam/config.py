@@ -35,6 +35,19 @@ class CamConfig(BaseSettings, extra="forbid"):
     auto_select_media: bool = Field(default=False, description="Auto select mounted /media storage device")
     draw_bbox: bool = Field(default=False, description="Draw bounding boxes on saved images")
 
+    zoom_to_roi: bool = Field(
+        default=False, description="Enable re-checking uncertain detections with the camera zoomed in on them"
+    )
+    zoom_below: float = Field(
+        default=0.5, ge=0, le=1, description="Detections below this confidence are re-checked zoomed in"
+    )
+    zoom_timeout_secs: float = Field(
+        default=1.0, gt=0, description="How long to wait for the zoomed view before keeping the original detection"
+    )
+    save_zoom_images: bool = Field(
+        default=False, description="Enable saving the zoomed image of each re-checked detection"
+    )
+
     @classmethod
     def from_file(cls, path: str | None = None):
         if path is None:

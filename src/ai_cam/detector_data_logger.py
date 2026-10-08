@@ -1,28 +1,23 @@
 import time
 import signal
 import logging
-import sys
 from datetime import datetime
 from libcamera import Rectangle
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
 import sdnotify
 
 from ai_cam.data_loggers import DataLogger
-from ai_cam.config import CamConfig
-from ai_cam.imx500_detector import IMX500Yolo
+from ai_cam.imx500_detector import FULL_SENSOR, IMX500Yolo
 from ai_cam.csi_camera import CameraCSI
-from ai_cam.utils import DetectionResultYOLO, BoundingBox
+from ai_cam.utils import BoundingBox, DetectionResultYOLO, apply_nms, name_part
+
+_logger = logging.getLogger(__name__)
 
 
 class DetectorLogger:
     def __init__(self, config):
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            stream=sys.stdout
-        )
-        logging.info("Capture Box Awake!")
+        _logger.info("Capture Box Awake!")
         self.n = sdnotify.SystemdNotifier()
         self._running = False
 
@@ -75,7 +70,7 @@ class DetectorLogger:
         self.peak_per_class: dict[str, dict] = {}
 
     def _handle_shutdown(self, signum, frame):
-        logging.info(f"Shutdown signal received ({signum}), cleaning up...")
+        _logger.info("Shutdown signal received (%s), cleaning up...", signum)
         self._running = False
 
     def _update_ema(self, detections: Optional[List[DetectionResultYOLO]]) -> None:
@@ -95,8 +90,6 @@ class DetectorLogger:
                 self.ema_alpha * current_score
                 + (1 - self.ema_alpha) * prev_ema
             )
-            # logging.info(f"DET: {cls_name}: {scores_this_frame.get(cls_name, 0.0):.2f}")
-            # logging.info(f"EMA: {cls_name}: {self.ema_per_class[cls_name]}")
 
     def _classes_above_threshold(self) -> list[str]:
         return [
@@ -104,7 +97,7 @@ class DetectorLogger:
             if ema >= self.event_activate
         ]
 
-    def _all_classes_deactive(self) -> list[str]:
+    def _all_classes_deactive(self) -> bool:
         deactive = True
         for cls_name, ema in self.ema_per_class.items():
             if ema >= self.event_deactivate:
@@ -113,11 +106,10 @@ class DetectorLogger:
         return deactive
 
     def _on_event_start(self, detections, frame, timestamp, active_classes):
-        logging.info(f"Event started — active classes: {active_classes}")
+        _logger.info("Event started, active classes: %s", active_classes)
         self.in_event = True
 
         # Initialise peak tracking for each active class
-        all_classes = []
         for cls_name in active_classes:
             self.peak_per_class[cls_name] = {
                 "ema": self.ema_per_class[cls_name],
@@ -125,10 +117,9 @@ class DetectorLogger:
                 "timestamp": timestamp,
                 "detections": detections
             }
-            all_classes.append(cls_name)
 
-        all_classes = "_".join(set(all_classes))
-        self.data_logger.log_results(detections, frame, timestamp, frame_type=f"event_start{all_classes}")
+        all_classes = name_part(active_classes)
+        self.data_logger.log_results(detections, frame, timestamp, frame_type=f"event_start_{all_classes}")
 
         if self.config.save_video:
             self.camera.start_video_recording(all_classes)
@@ -146,13 +137,13 @@ class DetectorLogger:
                 }
 
     def _on_event_end(self, detections, frame, timestamp):
-        logging.info(f"Event ended — saving peaks for: {list(self.peak_per_class.keys())}")
+        _logger.info("Event ended, saving peaks for: %s", list(self.peak_per_class.keys()))
 
         # Save best frame per species
         for cls_name, peak in self.peak_per_class.items():
             self.data_logger.log_results(
                 peak["detections"], peak["frame"],
-                peak["timestamp"], frame_type=f"event_peak_{cls_name}"
+                peak["timestamp"], frame_type=f"event_peak_{name_part([cls_name])}"
             )
 
         if self.config.save_video:
@@ -162,137 +153,91 @@ class DetectorLogger:
         self.in_event = False
         self.peak_per_class = {}
 
-    def _bbox_to_sensor_coords(self, bbox: BoundingBox, roi: Rectangle) -> Tuple[float, float, float, float]:
-        """Map a bbox normalized [0, 1] within `roi` into absolute sensor pixel coords."""
-        x0 = roi.x + bbox.xmin * roi.width
-        y0 = roi.y + bbox.ymin * roi.height
-        x1 = roi.x + bbox.xmax * roi.width
-        y1 = roi.y + bbox.ymax * roi.height
-        return x0, y0, x1, y1
+    def _wait_for_roi(self):
+        """The first usable frame inferred with the ROI just set, or (None, None) after
+        zoom_timeout_secs. Frames reach us some time after they're exposed, so the ones already on
+        their way still have the old ROI: skip those, then one more inference as a margin (the
+        sensor sometimes takes one more frame to apply it)."""
+        started = time.monotonic()
+        skipped = inferences = 0
+        while time.monotonic() - started < self.config.zoom_timeout_secs:
+            frame, metadata = self.camera.get_frames()
+            if self.detector.roi_in_effect(metadata):
+                inferences += 1
+                if inferences >= 2:
+                    _logger.debug("ROI in effect after %.0f ms, %s frames skipped",
+                                  (time.monotonic() - started) * 1000, skipped)
+                    return frame, metadata
+            skipped += 1
+        _logger.debug("ROI not in effect after %s s", self.config.zoom_timeout_secs)
+        return None, None
 
-    def _rescale_detections_to_roi(
-        self, detections: List[DetectionResultYOLO], source_roi: Rectangle, target_roi: Rectangle
-    ) -> List[DetectionResultYOLO]:
-        """
-        Re-express detections normalized within `source_roi` (e.g. a zoomed-in
-        inference crop) as bboxes normalized within `target_roi` (e.g. the
-        original full-frame ROI), so they line up with frames/detections
-        captured under `target_roi`. Detections with no overlap are dropped;
-        partial overlaps are clamped into [0, 1].
-        """
-        rescaled = []
-        for d in detections:
-            sx0, sy0, sx1, sy1 = self._bbox_to_sensor_coords(d.bbox, source_roi)
-
-            nx0 = (sx0 - target_roi.x) / target_roi.width
-            ny0 = (sy0 - target_roi.y) / target_roi.height
-            nx1 = (sx1 - target_roi.x) / target_roi.width
-            ny1 = (sy1 - target_roi.y) / target_roi.height
-
-            if nx1 <= 0 or ny1 <= 0 or nx0 >= 1 or ny0 >= 1:
-                continue  # no overlap with the target frame at all
-
-            rescaled.append(DetectionResultYOLO(
-                score=d.score,
-                class_name=d.class_name,
-                bbox=BoundingBox(
-                    xmin=max(0.0, nx0), ymin=max(0.0, ny0),
-                    xmax=min(1.0, nx1), ymax=min(1.0, ny1),
-                )
-            ))
-        return rescaled
-
-
-    def focus_on_detection(
-        self,
-        detection: DetectionResultYOLO,
-        metadata: dict,
-        zoom_margin: float = 1.4,
-        settle_frames: int = 5,
-    ):
-        """
-        Temporarily narrow the IMX500 inference ROI to zoom in on a specific
-        detection, capture one fresh frame + detection pass at that tighter
-        crop, then restore the ROI that was active beforehand.
-
-        Returned detections are rescaled back into full-frame normalized
-        coordinates, so they can be drawn on / compared against the original
-        (non-zoomed) frame and detections directly.
-        """
-        full_sensor = Rectangle(0, 0, 4056, 3040)
-
-        request = self.camera.picam2.capture_request()
-        curr_scaled_roi = self.detector.yolo_model.get_roi_scaled(request)
-        request.release()
-        logging.debug(f"OLD ROI: {curr_scaled_roi}")
-
-        # Reproject the triggering detection's bbox into sensor pixel coords.
-        scaler_crop = Rectangle(*metadata['ScalerCrop'])
-        det_x0, det_y0, det_x1, det_y1 = self._bbox_to_sensor_coords(detection.bbox, scaler_crop)
-
-        det_w = max(det_x1 - det_x0, 1)
-        det_h = max(det_y1 - det_y0, 1)
-        center_x = det_x0 + det_w / 2
-        center_y = det_y0 + det_h / 2
-
-        logging.debug(f"Sensor Coords: {center_x}/{center_y}, {det_h}/{det_w}")
-
-        # Pad, then stretch the short dimension to match the model's input
-        # aspect ratio, so the zoom doesn't squash the image.
-        model_aspect = 640 / 480
-        padded_w = det_w * zoom_margin
-        padded_h = det_h * zoom_margin
-        if padded_w / padded_h > model_aspect:
-            padded_h = padded_w / model_aspect
+    def _zoom_roi(self, bbox: BoundingBox, scaler_crop: Rectangle, zoom_margin: float = 1.4) -> Rectangle:
+        """A sensor ROI around a box (normalized to the video frame), padded by `zoom_margin` and
+        widened to the model's aspect ratio so the zoomed image isn't squashed."""
+        x0 = scaler_crop.x + bbox.xmin * scaler_crop.width
+        y0 = scaler_crop.y + bbox.ymin * scaler_crop.height
+        w = max((bbox.xmax - bbox.xmin) * scaler_crop.width, 1) * zoom_margin
+        h = max((bbox.ymax - bbox.ymin) * scaler_crop.height, 1) * zoom_margin
+        model_w, model_h = self.detector.model_wh
+        if w / h > model_w / model_h:
+            h = w * model_h / model_w
         else:
-            padded_w = padded_h * model_aspect
+            w = h * model_w / model_h
+        cx = x0 + (bbox.xmax - bbox.xmin) * scaler_crop.width / 2
+        cy = y0 + (bbox.ymax - bbox.ymin) * scaler_crop.height / 2
+        return Rectangle(int(cx - w / 2), int(cy - h / 2), int(w), int(h)).bounded_to(FULL_SENSOR)
 
-        new_roi = Rectangle(
-            int(center_x - padded_w / 2),
-            int(center_y - padded_h / 2),
-            int(padded_w),
-            int(padded_h),
-        ).bounded_to(full_sensor)
+    def _save_zoom(self, detections, frame, metadata, roi, timestamp, class_name):
+        """Save the zoomed part of the frame, with the detections relative to it."""
+        crop = self.detector.to_frame_box((0, 0, *self.detector.model_wh), roi, Rectangle(*metadata["ScalerCrop"]))
+        if crop is None:
+            return
+        h, w = frame.shape[:2]
+        x0, y0, x1, y1 = int(crop.xmin * w), int(crop.ymin * h), int(crop.xmax * w), int(crop.ymax * h)
+        if x1 <= x0 or y1 <= y0:
+            return
+        cw, ch = crop.xmax - crop.xmin, crop.ymax - crop.ymin
+        relative = [
+            DetectionResultYOLO(score=d.score, class_name=d.class_name, bbox=BoundingBox(
+                xmin=(d.bbox.xmin - crop.xmin) / cw, ymin=(d.bbox.ymin - crop.ymin) / ch,
+                xmax=(d.bbox.xmax - crop.xmin) / cw, ymax=(d.bbox.ymax - crop.ymin) / ch))
+            for d in detections
+        ]
+        self.data_logger.log_results(relative, frame[y0:y1, x0:x1].copy(), timestamp,
+                                     frame_type=f"zoom_{name_part([class_name])}")
 
-        self.detector.yolo_model.set_inference_roi_abs(new_roi.to_tuple())
-        
-        request = self.camera.picam2.capture_request()
-        curr_scaled_roi = self.detector.yolo_model.get_roi_scaled(request)
-        request.release()
-        logging.debug(f"New ROI: {curr_scaled_roi}")
+    def check_with_zoom(self, detections: list[DetectionResultYOLO], metadata: dict, timestamp) -> list[DetectionResultYOLO]:
+        """Re-check each detection under zoom_below with the camera's inference zoomed in on it.
 
-        time.sleep(0.25)
+        A zoomed view that finds something replaces the detection with what it found; one that
+        finds nothing drops it; one that gets no answer in time keeps it. The full view is restored
+        afterwards, once, however many detections were checked.
+        """
+        uncertain = [d for d in detections if d.score < self.config.zoom_below]
+        if not uncertain:
+            return detections
 
-        zoom_frame, zoomed_detections = None, None
+        scaler_crop = Rectangle(*metadata["ScalerCrop"])
+        checked = [d for d in detections if d.score >= self.config.zoom_below]
         try:
-            timeout = 0
-            while zoomed_detections is None:
-                logging.info(f"Zoom to detection: {detection.class_name}")
-
-                zoom_frame_out, zoom_metadata = self.camera.get_frames()
-                zoomed_detections = self.detector.get_detections(zoom_metadata)
-
-                timeout += 1
-
-                if timeout > settle_frames:
-                    break
-
-            if zoomed_detections:
-                zoomed_detections = self._rescale_detections_to_roi(
-                    zoomed_detections, source_roi=new_roi, target_roi=full_sensor
-                )
-
-            zoom_frame = zoom_frame_out[
-                curr_scaled_roi[1] : curr_scaled_roi[1] + curr_scaled_roi[3], 
-                curr_scaled_roi[0] : curr_scaled_roi[0] + curr_scaled_roi[2]]
-
+            for detection in uncertain:
+                roi = self._zoom_roi(detection.bbox, scaler_crop)
+                _logger.debug("Zooming in on %s (%.2f): ROI %s", detection.class_name, detection.score, roi)
+                self.detector.set_roi(roi)
+                zoom_frame, zoom_metadata = self._wait_for_roi()
+                zoomed = self.detector.get_detections(zoom_metadata, roi) if zoom_metadata is not None else None
+                if zoomed is None:
+                    checked.append(detection)
+                    continue
+                checked += zoomed
+                if zoomed and self.config.save_zoom_images:
+                    self._save_zoom(zoomed, zoom_frame, zoom_metadata, roi, timestamp, detection.class_name)
         finally:
-            self.detector.yolo_model.set_inference_roi_abs(full_sensor.to_tuple())
+            self.detector.set_roi(FULL_SENSOR)
+            self._wait_for_roi()
 
-            time.sleep(0.25)
-
-
-        return zoomed_detections, zoom_frame
+        return apply_nms(checked, nms_threshold=self.detector.iou_threshold)
 
     def run(self):
         self._running = True
@@ -301,9 +246,9 @@ class DetectorLogger:
         last_frame_time = time.time()
         last_heartbeat_time = time.time()
 
-        logging.info("Waiting for startup...")
+        _logger.info("Waiting for startup...")
         time.sleep(2)
-        logging.info("Starting!")
+        _logger.info("Starting!")
         self.n.notify("READY=1")
 
         encoding = False
@@ -321,24 +266,14 @@ class DetectorLogger:
                 # if detection_results is none, then NO inference results is provided
                 # "no detections" will result in an empty list
                 if detection_results is not None:
-                    zoom_detection_results = []
-                    for detection in detection_results:
-
-                        if detection.score < 0.5:
-                            zoom_dets, _ = self.focus_on_detection(detection, metadata)
-                            if zoom_dets is not None:
-                                zoom_detection_results += zoom_dets
-                        else:
-                            zoom_detection_results.append(detection)
-
-                    if len(zoom_detection_results) > 0:
-                        detection_results = zoom_detection_results
+                    if self.config.zoom_to_roi and detection_results:
+                        detection_results = self.check_with_zoom(detection_results, metadata, timestamp)
 
                     if self.config.draw_bbox:
                         self.camera.update_detections(detection_results)
 
                     self._update_ema(detection_results)
-                    logging.debug(f"EMA per class: { {c: f'{v:.3f}' for c, v in self.ema_per_class.items()} }")
+                    _logger.debug("EMA per class: %s", {c: round(v, 3) for c, v in self.ema_per_class.items()})
 
                     # Event state machine
                     if not self.in_event:
@@ -365,8 +300,8 @@ class DetectorLogger:
                     self.n.notify("WATCHDOG=1")
 
         finally:
-            logging.info("Shutting down...")
+            _logger.info("Shutting down...")
             if self.config.save_video and encoding:
                 self.camera.stop_video_recording()
             self.camera.stop_camera()
-            logging.info("Camera closed cleanly.")
+            _logger.info("Camera closed cleanly.")
