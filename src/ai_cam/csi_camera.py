@@ -40,10 +40,11 @@ class CameraCSI():
             self.picam2.post_callback = self.video_bbox
 
         # Configure camera stream. The format is picamera2's video default (XBGR8888, RGB order in
-        # memory), which the image saving relies on. 3 buffers: same frame rate and delay as 6, less memory.
+        # memory), which the image saving relies on. Keep picamera2's default buffer count: with 3, the
+        # model output stopped arriving for 30-125 s at a time.
         main = {'size': self.video_wh, 'format': 'XBGR8888'}
         controls = {'FrameRate': fps}
-        config = self.picam2.create_video_configuration(main=main, controls=controls, buffer_count=3)
+        config = self.picam2.create_video_configuration(main=main, controls=controls)
         self.picam2.configure(config)
 
         self.picam2.start()
