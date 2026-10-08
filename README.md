@@ -140,19 +140,18 @@ The AI camera can run its model on just part of the sensor. With `zoom_to_roi` o
 Each check takes a few hundred milliseconds, while the camera switches over and back. With `save_zoom_images` on, the zoomed part of the frame is saved too, as `<device>_zoom_<class>_<time>.jpg`.
 
 
-## Phone notifications (ntfy)
-The camera can send a notification with a picture to your phone whenever a species is first detected, using [ntfy](https://ntfy.sh):
+## Phone notifications! (ntfy)
+Want a ping on your phone when a bird turns up? The camera can send you a notification, with a picture, using [ntfy](https://ntfy.sh).
 1. Install the ntfy app on your phone and subscribe to a topic, e.g. `my-camera-alerts-7f3k`.
-2. Set `"ntfy_topic": "my-camera-alerts-7f3k"` in `config.json` and restart the service.
-3. Check it works:
+2. Put that same topic in `config.json`: `"ntfy_topic": "my-camera-alerts-7f3k"`, then restart the service.
+3. Send yourself a test (it uses the newest saved image):
 ```shell
 uv run ai_cam notify-test --config config.json
 ```
-This sends a test notification with the newest saved image.
 
-You'll get one notification for each species when it's first detected, including a second species that turns up while the first is still there, with the device name in the title. A species notifies again only once it has gone and come back, and not more often than `ntfy_cooldown_secs`.
+You'll get one notification per species when it first shows up, even if another species is already there, with your `device_name` in the title. A species won't notify again until it has left and come back, and never more often than `ntfy_cooldown_secs`.
 
-Anyone who knows a topic name on ntfy.sh can subscribe to it, so pick one that's hard to guess.
+**Heads up:** anyone who knows a topic name on ntfy.sh can subscribe to it, so pick something hard to guess!
 
 # 4. More about systemd
 
