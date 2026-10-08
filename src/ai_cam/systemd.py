@@ -1,7 +1,5 @@
 import logging
 import os
-import pwd
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -26,27 +24,10 @@ def _get_username() -> str:
     return os.environ.get("SUDO_USER") or os.getlogin()
 
 
-def _find_bin(name: str) -> Path | None:
-    """Find a binary, checking both PATH and the invoking user's home."""
-    found = shutil.which(name)
-    if found:
-        return Path(found)
-    # Under sudo, the user's ~/.local/bin may not be on root's PATH
-    username = _get_username()
-    home = Path(pwd.getpwnam(username).pw_dir)
-    candidate = home / ".local/bin" / name
-    if candidate.exists():
-        return candidate
-    return None
-
-
-def _get_uv() -> Path:
-    """Find the uv binary."""
-    uv = _find_bin("uv")
-    if uv:
-        return uv
-    _logger.error("Could not find uv binary on PATH")
-    sys.exit(1)
+def _venv_ai_cam() -> Path:
+    """The `ai_cam` of the environment this runs in (the cloned repo's .venv): what the
+    service runs, with no `uv run` in front of it."""
+    return Path(sys.executable).parent / "ai_cam"
 
 
 def _render_service(name: str, user: str, exec_start: str) -> str:
@@ -59,7 +40,7 @@ def _render_service(name: str, user: str, exec_start: str) -> str:
             "Wants=network-online.target\n"
             "\n"
             "[Service]\n"
-            "Type=simple\n"
+            "Type=notify\n"
             f"User={user}\n"
             f"Group={user}\n"
             f"ExecStart={exec_start}\n"
@@ -67,8 +48,6 @@ def _render_service(name: str, user: str, exec_start: str) -> str:
             "RestartSec=10\n"
             "WatchdogSec=30\n"
             "NotifyAccess=all\n"
-            "Type=notify\n"
-
             "\n"
             "[Install]\n"
             "WantedBy=default.target\n"
@@ -96,11 +75,12 @@ def install_systemd(config_path: Path | None = None) -> None:
 
     config_flag = f" --config {config_path}" if config_path else ""
 
-    uv = _get_uv()
-    _logger.info("Detected cloned repo at %s — using uv run", project_dir)
+    ai_cam = _venv_ai_cam()
+    _logger.info("The service runs %s", ai_cam)
+    _logger.info("After a git pull, run 'uv sync' then 'ai_cam restart'")
 
     def make_exec_start(subcmd: str) -> str:
-        return f"{uv} run --project {project_dir} ai_cam {subcmd}{config_flag}"
+        return f"{ai_cam} {subcmd}{config_flag}"
 
     _logger.info("Installing systemd services for user '%s'", user)
     target_dir = Path("/etc/systemd/system")
