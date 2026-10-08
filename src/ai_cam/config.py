@@ -48,6 +48,14 @@ class CamConfig(BaseSettings, extra="forbid"):
         default=False, description="Enable saving the zoomed image of each re-checked detection"
     )
 
+    ntfy_topic: str | None = Field(
+        default=None,
+        description="The ntfy topic to send detections to, e.g. my-camera-alerts. Subscribe to the same topic in the ntfy app",
+    )
+    ntfy_cooldown_secs: float = Field(
+        default=60, ge=0, description="The shortest time between notifications for the same species"
+    )
+
     @classmethod
     def from_file(cls, path: str | None = None):
         if path is None:

@@ -128,6 +128,8 @@ All settings live in `config.json`
 | `zoom_below` | `0.5` | Detections below this confidence are re-checked zoomed in |
 | `zoom_timeout_secs` | `1` | How long to wait for the zoomed view before keeping the original detection |
 | `save_zoom_images` | `false` | Save the zoomed image of each re-checked detection |
+| `ntfy_topic` | *(none)* | The ntfy topic to send detections to (see below) |
+| `ntfy_cooldown_secs` | `60` | The shortest time between notifications for the same species |
 
 ## Zooming in on uncertain detections
 The AI camera can run its model on just part of the sensor. With `zoom_to_roi` on, a detection under `zoom_below` is checked again with the model zoomed in on it, which gives a small or distant animal many more pixels:
@@ -137,6 +139,20 @@ The AI camera can run its model on just part of the sensor. With `zoom_to_roi` o
 
 Each check takes a few hundred milliseconds, while the camera switches over and back. With `save_zoom_images` on, the zoomed part of the frame is saved too, as `<device>_zoom_<class>_<time>.jpg`.
 
+
+## Phone notifications (ntfy)
+The camera can send a notification with a picture to your phone whenever a species is first detected, using [ntfy](https://ntfy.sh):
+1. Install the ntfy app on your phone and subscribe to a topic, e.g. `my-camera-alerts-7f3k`.
+2. Set `"ntfy_topic": "my-camera-alerts-7f3k"` in `config.json` and restart the service.
+3. Check it works:
+```shell
+uv run ai_cam notify-test --config config.json
+```
+This sends a test notification with the newest saved image.
+
+You'll get one notification for each species when it's first detected, including a second species that turns up while the first is still there, with the device name in the title. A species notifies again only once it has gone and come back, and not more often than `ntfy_cooldown_secs`.
+
+Anyone who knows a topic name on ntfy.sh can subscribe to it, so pick one that's hard to guess.
 
 # 4. More about systemd
 

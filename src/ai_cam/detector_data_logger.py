@@ -10,7 +10,8 @@ import sdnotify
 from ai_cam.data_loggers import DataLogger
 from ai_cam.imx500_detector import FULL_SENSOR, IMX500Yolo
 from ai_cam.csi_camera import CameraCSI
-from ai_cam.utils import BoundingBox, DetectionResultYOLO, apply_nms, name_part
+from ai_cam.notifier import NtfyNotifier
+from ai_cam.utils import BoundingBox, DetectionResultYOLO, apply_nms, draw_detections, name_part
 
 _logger = logging.getLogger(__name__)
 
@@ -68,6 +69,12 @@ class DetectorLogger:
         # Event state
         self.in_event = False
         self.peak_per_class: dict[str, dict] = {}
+
+        # Notifications: one per species when it becomes active, separately from the event (a second
+        # species can become active during an event that's already running)
+        self.notifier = NtfyNotifier(self.config.ntfy_topic) if self.config.ntfy_topic else None
+        self.active_species: set[str] = set()
+        self.last_notified: dict[str, float] = {}
 
     def _handle_shutdown(self, signum, frame):
         _logger.info("Shutdown signal received (%s), cleaning up...", signum)
@@ -239,6 +246,32 @@ class DetectorLogger:
 
         return apply_nms(checked, nms_threshold=self.detector.iou_threshold)
 
+    def _notify_new_species(self, detections, frame, timestamp) -> None:
+        """Notify once for each species that has just become active (its smoothed confidence crossed
+        event_activate), at most once per ntfy_cooldown_secs. It can notify again after dropping
+        below event_deactivate."""
+        for cls_name, ema in self.ema_per_class.items():
+            if ema < self.event_deactivate:
+                self.active_species.discard(cls_name)
+            elif ema >= self.event_activate and cls_name not in self.active_species:
+                self.active_species.add(cls_name)
+                now = time.monotonic()
+                if self.notifier is None or now - self.last_notified.get(cls_name, -1e9) < self.config.ntfy_cooldown_secs:
+                    continue
+                self.last_notified[cls_name] = now
+
+                found = [d for d in detections if d.class_name == cls_name]
+                confidence = max((d.score for d in found), default=ema)
+                device = self.config.device_name
+                self.notifier.notify(
+                    title=f"{device}: {cls_name}",
+                    message=f"Confidence {confidence:.2f} at {timestamp:%H:%M:%S}",
+                    image=draw_detections(found, frame.copy()),
+                    filename=f"{device}_{name_part([cls_name])}_{timestamp:%Y%m%d-%H%M%S}.jpg",
+                    tags=(device,),
+                )
+                _logger.info("Notifying: %s", cls_name)
+
     def run(self):
         self._running = True
 
@@ -274,6 +307,7 @@ class DetectorLogger:
 
                     self._update_ema(detection_results)
                     _logger.debug("EMA per class: %s", {c: round(v, 3) for c, v in self.ema_per_class.items()})
+                    self._notify_new_species(detection_results, frame, timestamp)
 
                     # Event state machine
                     if not self.in_event:
@@ -304,4 +338,6 @@ class DetectorLogger:
             if self.config.save_video and encoding:
                 self.camera.stop_video_recording()
             self.camera.stop_camera()
+            if self.notifier:
+                self.notifier.close()
             _logger.info("Camera closed cleanly.")
