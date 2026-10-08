@@ -55,7 +55,6 @@ class DetectorLogger:
             save_video=self.config.save_video,
             data_output=self.data_logger.data_output,
             buffer_secs=self.config.buffer_secs,
-            fps=self.detector.network_ips,
             camera_num=self.detector.yolo_model.camera_num,
             draw_bbox=self.config.draw_bbox,
         )

@@ -113,7 +113,7 @@ All settings live in `config.json`
 | `valid_classes` | *(none)* | Optional path to a subset of classes to detect |
 | `confidence` | `0.5` | Detection confidence threshold (0–1) |
 | `iou_threshold` | `0.5` | NMS IoU threshold (0–1) |
-| `ips` | `5` | Max inferences per second |
+| `ips` | `5` | Max inferences per second (the camera itself always runs at 30 fps) |
 | `video_size` | `"1920,1080"` | Camera resolution as `"width,height"` |
 | `buffer_secs` | `3` | Circular video buffer length in seconds |
 | `ema_alpha` | `0.2` | How quickly each class's smoothed confidence follows new detections (0–1) |

@@ -12,10 +12,14 @@ from typing import List
 from datetime import datetime
 from ai_cam.utils import DetectionResultYOLO, draw_detections
 
+# The camera always runs at this rate, whatever the model's; `ips` limits how often detections are handled
+CAMERA_FPS = 30
+
+
 class CameraCSI():
     def __init__(self, device_name: str, video_wh: Tuple[int, int] = (1920,1080),
                 save_video: bool = False, data_output: str = ".", buffer_secs: int = 5, 
-                fps: int = 10, camera_num: int = 0, draw_bbox: bool = False):
+                camera_num: int = 0, draw_bbox: bool = False):
 
         self.logger = logging.getLogger(__name__)
 
@@ -43,16 +47,16 @@ class CameraCSI():
         # memory), which the image saving relies on. Keep picamera2's default buffer count: with 3, the
         # model output stopped arriving for 30-125 s at a time.
         main = {'size': self.video_wh, 'format': 'XBGR8888'}
-        controls = {'FrameRate': fps}
+        controls = {'FrameRate': CAMERA_FPS}
         config = self.picam2.create_video_configuration(main=main, controls=controls)
         self.picam2.configure(config)
 
         self.picam2.start()
-        self.logger.info("Camera started: %sx%s at %s fps", *config["main"]["size"], fps)
+        self.logger.info("Camera started: %sx%s at %s fps", *config["main"]["size"], CAMERA_FPS)
 
         if self.save_video:
             self.encoder = H264Encoder(1000000, repeat=True)
-            self.output = CircularOutput(buffersize=self.buffer_secs * fps)
+            self.output = CircularOutput(buffersize=self.buffer_secs * CAMERA_FPS)
             self.picam2.start_recording(self.encoder, self.output, quality=Quality.HIGH)
             self.logger.info("Saving video")
 
