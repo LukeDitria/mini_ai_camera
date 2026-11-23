@@ -8,13 +8,13 @@ authors = [
   {name = "Luke Ditria"},
 ]
 
+# picamera2, numpy and opencv come from apt (python3-picamera2, python3-opencv, python3-numpy), not
+# from here: the venv is made with --system-site-packages, and PyPI's numpy would break picamera2.
 dependencies = [
     "sdnotify",
     "click>=8.3.1",
-    "platformdirs>=4.5.1",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
-    "pyserial>=3.5",
     ]
 
 [dependency-groups]

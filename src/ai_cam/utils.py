@@ -104,34 +104,35 @@ def read_class_list(filepath: str):
         return [line.strip() for line in f if line.strip()]
 
 def find_first_usb_drive() -> Optional[str]:
-    # Relies on raspi OS to auto mount USB storage to /media/username etc
-    # Lite version does not auto mount any USB, if using Lite you need to manually set this up for a certain USB
+    """The first drive mounted under /media/<user>/, in name order, or None.
 
+    Relies on Raspberry Pi OS auto-mounting USB storage there. The Lite version doesn't: see the
+    README for mounting a drive by its UUID.
+    """
     media_path = "/media"
-
-    # Check if /media exists
-    if not os.path.exists(media_path):
+    try:
+        users = sorted(os.listdir(media_path))
+    except OSError:
         return None
 
-    # Get all user directories under /media (usually just one)
-    media_items = os.listdir(media_path)
-
-    for user_dir in media_items:
+    for user_dir in users:
         user_path = os.path.join(media_path, user_dir)
+        try:
+            drives = sorted(os.listdir(user_path))
+        except OSError:
+            continue
+        for drive in drives:
+            drive_path = os.path.join(user_path, drive)
+            if os.path.ismount(drive_path):
+                return drive_path
 
-        # If this is a directory
-        if os.path.isdir(user_path):
-            # Check for any subdirectories (mounted drives)
-            try:
-                usb_drives = os.listdir(user_path)
-                if usb_drives:
-                    # Return the first drive found
-                    return os.path.join(user_path, usb_drives[0])
-            except:
-                pass
-
-    # No USB drives found
     return None
+
+
+def name_part(class_names) -> str:
+    """Class names as one part of a file name: sorted, spaces as '-', joined with '_'."""
+    return "_".join(sorted({name.replace(" ", "-") for name in class_names}))
+
 
 def draw_detections(detections: List[DetectionResultYOLO], frame: np.ndarray) -> np.ndarray:
     for detection in detections:

@@ -37,6 +37,8 @@ picamera2 tells us to install **system wide**. Therefore we need to install open
 sudo apt install python3-opencv -y
 ```
 
+numpy comes with these system packages too. Don't install numpy, opencv or picamera2 into the project's environment with pip or uv: the system versions are the ones that work with the camera.
+
 ## OS Lite!
 If you're using the Lite OS you will also need to install:
 ```commandline
@@ -83,6 +85,14 @@ Repo comes with an `install` command to setup the systemd service
 uv run ai_cam install
 ```
 
+## Updating
+To update to the latest version, pull the changes, sync the environment and restart the service:
+```shell
+git pull
+uv sync
+uv run ai_cam restart
+```
+
 # 3. Updating the config.json
 When you install the service a default config.json file will be created in the mini_ai_camera directory. Subsequent restarts of the service will load configuration parameters from this config.json.
 
@@ -93,7 +103,7 @@ uv run ai_cam restart
 
 ## Configuration
 All settings live in `config.json`
- 
+
 | Key | Default | Description |
 |---|---|---|
 | `output_dir` | `output` | Local fallback output directory |
@@ -101,20 +111,47 @@ All settings live in `config.json`
 | `model` | `models/yolov8n.rpk` | Path to the compiled yolo model file |
 | `labels` | `models/coco_labels.txt` | Path to class labels |
 | `valid_classes` | *(none)* | Optional path to a subset of classes to detect |
-| `confidence` | `0.5` | Detection confidence threshold for raw detections (0–1) |
+| `confidence` | `0.5` | Detection confidence threshold (0–1) |
 | `iou_threshold` | `0.5` | NMS IoU threshold (0–1) |
 | `ips` | `5` | Max inferences per second |
 | `video_size` | `"1920,1080"` | Camera resolution as `"width,height"` |
-| `buffer_secs` | `3` | Circular video buffer length in seconds (Pre-Capture time) |
-| `ema_alpha` | `0.2` | EMA smoothing factor for per-class confidence (lower=slower) (0–1) |
-| `event_activate` | `0.8` | EMA threshold to trigger an active event (0–1) |
-| `event_deactivate` | `0.5` | EMA threshold to deactivate an event (0–1) |
-| `save_video` | `false` | Save H.264 video clips? |
-| `save_images` | `false` | Save JPEG frames on detection? |
-| `save_data` | `true` | Save per-detection JSON files? |
-| `draw_bbox` | `false` | Draw bounding boxes on saved images? |
-| `auto_select_media` | `false` | Auto-detect USB drive under `/media` for output? |
+| `buffer_secs` | `3` | Circular video buffer length in seconds |
+| `ema_alpha` | `0.2` | How quickly each class's smoothed confidence follows new detections (0–1) |
+| `event_activate` | `0.8` | Smoothed confidence at which an event starts |
+| `event_deactivate` | `0.5` | Smoothed confidence below which an event ends |
+| `save_video` | `false` | Save H.264 video clips |
+| `save_images` | `false` | Save JPEG frames on detection |
+| `save_data` | `true` | Save per-detection JSON files |
+| `draw_bbox` | `false` | Draw bounding boxes on saved images |
+| `auto_select_media` | `false` | Auto-detect USB drive under `/media` for output |
+| `zoom_to_roi` | `false` | Re-check uncertain detections with the camera zoomed in on them (see below) |
+| `zoom_below` | `0.5` | Detections below this confidence are re-checked zoomed in |
+| `zoom_timeout_secs` | `1` | How long to wait for the zoomed view before keeping the original detection |
+| `save_zoom_images` | `false` | Save the zoomed image of each re-checked detection |
+| `ntfy_topic` | *(none)* | The ntfy topic to send detections to (see below) |
+| `ntfy_cooldown_secs` | `60` | The shortest time between notifications for the same species |
 
+## Zooming in on uncertain detections
+The AI camera can run its model on just part of the sensor. With `zoom_to_roi` on, a detection under `zoom_below` is checked again with the model zoomed in on it, which gives a small or distant animal many more pixels:
+- if the zoomed view finds something, that replaces the uncertain detection;
+- if it finds nothing, the detection is dropped;
+- if the camera doesn't answer within `zoom_timeout_secs`, the original detection is kept.
+
+Each check takes a few hundred milliseconds, while the camera switches over and back. With `save_zoom_images` on, the zoomed part of the frame is saved too, as `<device>_zoom_<class>_<time>.jpg`.
+
+
+## Phone notifications! (ntfy)
+Want a ping on your phone when a bird turns up? The camera can send you a notification, with a picture, using [ntfy](https://ntfy.sh).
+1. Install the ntfy app on your phone and subscribe to a topic, e.g. `my-camera-alerts-7f3k`.
+2. Put that same topic in `config.json`: `"ntfy_topic": "my-camera-alerts-7f3k"`, then restart the service.
+3. Send yourself a test (it uses the newest saved image):
+```shell
+uv run ai_cam notify-test --config config.json
+```
+
+You'll get one notification per species when it first shows up, even if another species is already there, with your `device_name` in the title. A species won't notify again until it has left and come back, and never more often than `ntfy_cooldown_secs`.
+
+**Heads up:** anyone who knows a topic name on ntfy.sh can subscribe to it, so pick something hard to guess!
 
 # 4. More about systemd
 
